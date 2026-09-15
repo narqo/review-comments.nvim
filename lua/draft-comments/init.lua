@@ -55,8 +55,8 @@ function M.setup(opts)
   configured_keymap = config.keymap
 
   if config.keymap then
-    vim.keymap.set("x", config.keymap, ":<C-u>'<,'>DraftComment<CR>", {
-      desc = "Draft a comment for the selected lines",
+    vim.keymap.set("x", config.keymap, ":<C-u>'<,'>AddComment<CR>", {
+      desc = "Add a comment for the selected lines",
       silent = true,
     })
   end

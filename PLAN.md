@@ -14,17 +14,17 @@ The create and saved-comment visibility phases are implemented and covered by he
 
 1. Open a named source file, optionally in a native `:diffsplit`.
 2. Select one or more lines in visual mode.
-3. Run `:'<,'>DraftComment` or a configured visual-mode mapping.
+3. Run `:'<,'>AddComment` or a configured visual-mode mapping.
 4. Enter the comment in a Markdown floating buffer anchored below the selection.
 5. Save with `<C-s>` or `:write`.
 6. The plugin creates the comment file and closes the floating window.
 
 Use `:quit!` to cancel without creating a file.
 
-The plugin will expose `:DraftComment` as a ranged command. It will not install a mapping by default. A suggested mapping is:
+The plugin will expose `:AddComment` as a ranged command. It will not install a mapping by default. A suggested mapping is:
 
 ```lua
-vim.keymap.set("x", "<leader>dc", ":<C-u>'<,'>DraftComment<CR>")
+vim.keymap.set("x", "<leader>ac", ":<C-u>'<,'>AddComment<CR>")
 ```
 
 ## Selection behavior
@@ -132,7 +132,7 @@ require("draft-comments").setup({
 ```
 
 - `output_dir` is interpreted relative to the Git repository root and must remain a relative path.
-- `keymap`, when set, installs a visual-mode mapping for `:DraftComment`.
+- `keymap`, when set, installs a visual-mode mapping for `:AddComment`.
 - Calling `setup()` is optional; defaults should work after the plugin is loaded.
 
 Do not introduce external Lua dependencies.
@@ -170,7 +170,7 @@ lua/
 
 Responsibilities:
 
-- `plugin/draft-comments.lua`: register the ranged `:DraftComment` command.
+- `plugin/draft-comments.lua`: register the ranged `:AddComment` command and the refresh and view commands.
 - `init.lua`: configuration, command entry point, and public API.
 - `comments.lua`: comment indexing, preview rendering, refresh, and view dispatch.
 - `editor.lua`: selection capture, floating editor lifecycle, save and cancel behavior.
@@ -216,7 +216,7 @@ Responsibilities:
 - Group comments by normalized absolute source path.
 - Ignore malformed or unsupported files and report concise warnings.
 - Load comments automatically once when entering a source buffer.
-- Add `:DraftCommentsRefresh` to rescan files created, changed, or removed externally.
+- Add `:RefreshComment` to rescan files created, changed, or removed externally.
 - Add newly saved comments to the in-memory index immediately.
 
 ### Render comment previews
@@ -233,7 +233,7 @@ Responsibilities:
 
 ### View comments
 
-Add `:DraftCommentView`. When the cursor is inside one or more comment ranges:
+Add `:ViewComment`. When the cursor is inside one or more comment ranges:
 
 - Open a read-only floating Markdown window next to the range.
 - Show every comment whose range contains the cursor line.
@@ -248,9 +248,9 @@ Add `:DraftCommentView`. When the cursor is inside one or more comment ranges:
 - Long previews end in `...` and remain within the limit.
 - Multiple comments on one final line show one preview and an accurate `(+N more)` count within the limit.
 - Preview extmarks do not add rows or desynchronize native diff panes.
-- `:DraftCommentsRefresh` reflects external file additions, changes, and removals.
+- `:RefreshComment` reflects external file additions, changes, and removals.
 - A newly saved comment appears without requiring a refresh.
-- `:DraftCommentView` shows all comments covering the cursor line in a read-only window.
+- `:ViewComment` shows all comments covering the cursor line in a read-only window.
 - Malformed comment files do not prevent valid comments from loading.
 
 ## Future work

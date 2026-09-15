@@ -3,23 +3,23 @@ if vim.g.loaded_draft_comments == 1 then
 end
 vim.g.loaded_draft_comments = 1
 
-vim.api.nvim_create_user_command("DraftComment", function(args)
+vim.api.nvim_create_user_command("AddComment", function(args)
   require("draft-comments").draft({
     start_line = args.line1,
     end_line = args.line2,
   })
 end, {
-  desc = "Draft a comment for the selected lines",
+  desc = "Add a comment for the selected lines",
   range = true,
 })
 
-vim.api.nvim_create_user_command("DraftCommentsRefresh", function()
+vim.api.nvim_create_user_command("RefreshComment", function()
   require("draft-comments").refresh()
 end, {
   desc = "Reload draft comments from disk",
 })
 
-vim.api.nvim_create_user_command("DraftCommentView", function()
+vim.api.nvim_create_user_command("ViewComment", function()
   require("draft-comments").view()
 end, {
   desc = "View draft comments covering the cursor line",
