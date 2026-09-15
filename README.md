@@ -47,6 +47,8 @@ require("review-comments").setup({
 })
 ```
 
+Each comment is a separate Markdown file with JSON frontmatter.
+
 The plugin requires Neovim 0.10 or newer, Git, and a named file inside a Git working tree.
 
 ## Automated tests
@@ -55,4 +57,3 @@ The plugin requires Neovim 0.10 or newer, Git, and a named file inside a Git wor
 make test
 ```
 
-Each comment is stored as a separate Markdown file with raw JSON frontmatter containing a `draft` status, absolute source path, selected line range, and selected source text.
