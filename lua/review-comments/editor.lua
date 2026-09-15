@@ -120,12 +120,18 @@ function M.open(opts)
     return false
   end
 
+  local relative_file, relative_err = git.relative_file(root, source_path)
+  if not relative_file then
+    notify(relative_err)
+    return false
+  end
+
   local context = table.concat(
     vim.api.nvim_buf_get_lines(source_buf, start_line - 1, end_line, false),
     "\n"
   )
   local metadata = {
-    file = source_path,
+    file = relative_file,
     range = {
       start_line = start_line,
       end_line = end_line,

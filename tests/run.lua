@@ -112,7 +112,7 @@ end
 test("renders parseable JSON metadata and Markdown", function()
   local storage = require("review-comments.storage")
   local rendered = storage.render({
-    file = "/tmp/source.lua",
+    file = "source.lua",
     range = { start_line = 2, end_line = 3 },
     context = "local quoted = \"value\"\nreturn quoted",
   }, "Check the quoted value.")
@@ -122,7 +122,7 @@ test("renders parseable JSON metadata and Markdown", function()
   local metadata, body = comment_parts(rendered)
   assert_equal(1, metadata.version)
   assert_equal("draft", metadata.status)
-  assert_equal("/tmp/source.lua", metadata.file)
+  assert_equal("source.lua", metadata.file)
   assert_equal({ start_line = 2, end_line = 3 }, metadata.range)
   assert_equal("local quoted = \"value\"\nreturn quoted", metadata.context)
   assert_equal("Check the quoted value.\n", body)
@@ -131,7 +131,7 @@ end)
 test("parses comment files and allows unknown metadata fields", function()
   local storage = require("review-comments.storage")
   local rendered = storage.render({
-    file = "/tmp/source.lua",
+    file = "internal/source.lua",
     range = { start_line = 4, end_line = 4 },
     context = "return true",
   }, "Keep this return value.")
@@ -169,7 +169,7 @@ test("creates unique flat comment files", function()
   local root = vim.fn.tempname()
   assert_equal(1, vim.fn.mkdir(root, "p"))
   local metadata = {
-    file = "/tmp/source.lua",
+    file = "source.lua",
     range = { start_line = 1, end_line = 1 },
     context = "return true",
   }
@@ -193,7 +193,9 @@ end)
 
 test("saves a selected source range through the floating editor", function()
   local root = create_repository()
-  local source = vim.fs.joinpath(root, "server.lua")
+  local source_dir = vim.fs.joinpath(root, "internal")
+  local source = vim.fs.joinpath(source_dir, "server.lua")
+  assert_equal(1, vim.fn.mkdir(source_dir, "p"))
   write_file(source, {
     "local function serve(request)",
     "  local method = request.method",
@@ -203,7 +205,6 @@ test("saves a selected source range through the floating editor", function()
 
   vim.cmd("edit " .. vim.fn.fnameescape(source))
   local source_buf = vim.api.nvim_get_current_buf()
-  local expected_source = vim.fs.normalize(vim.api.nvim_buf_get_name(0))
   require("review-comments").setup({})
   vim.cmd("2,3AddComment")
 
@@ -221,7 +222,7 @@ test("saves a selected source range through the floating editor", function()
   local files = comment_files(root)
   assert_equal(1, #files)
   local metadata, body = comment_parts(read_file(files[1]))
-  assert_equal(expected_source, metadata.file)
+  assert_equal(vim.fs.normalize("internal/server.lua"), metadata.file)
   assert_equal({ start_line = 2, end_line = 3 }, metadata.range)
   assert_equal("  local method = request.method\n  return method", metadata.context)
   assert_equal("Include the request path.\nThis needs enough context for debugging.\n", body)
@@ -244,17 +245,16 @@ test("loads previews, refreshes external changes, and views overlapping comments
   write_file(source, { "local value = 1", "return value", "" })
   assert_equal(1, vim.fn.mkdir(output_dir, "p"))
 
-  local source_path = vim.fs.normalize(vim.uv.fs_realpath(source))
   local first_body = "This comment is intentionally much longer than forty characters."
   local first_path = vim.fs.joinpath(output_dir, "2026-01-01T000000.000Z-000001.md")
   local second_path = vim.fs.joinpath(output_dir, "2026-01-01T000001.000Z-000002.md")
   write_content(first_path, storage.render({
-    file = source_path,
+    file = "reviewed.lua",
     range = { start_line = 1, end_line = 2 },
     context = "local value = 1\nreturn value",
   }, "\n" .. first_body))
   write_content(second_path, storage.render({
-    file = source_path,
+    file = "reviewed.lua",
     range = { start_line = 2, end_line = 2 },
     context = "return value",
   }, "Second comment."))
@@ -296,7 +296,7 @@ test("loads previews, refreshes external changes, and views overlapping comments
 
   vim.uv.fs_unlink(second_path)
   write_content(first_path, storage.render({
-    file = source_path,
+    file = "reviewed.lua",
     range = { start_line = 1, end_line = 2 },
     context = "local value = 1\nreturn value",
   }, "Updated externally."))
@@ -392,7 +392,6 @@ test("uses the active diffsplit pane as the source", function()
   vim.cmd("edit " .. vim.fn.fnameescape(old_file))
   vim.cmd("vertical diffsplit " .. vim.fn.fnameescape(new_file))
   assert_equal("new.lua", vim.fs.basename(vim.api.nvim_buf_get_name(0)))
-  local expected_source = vim.fs.normalize(vim.api.nvim_buf_get_name(0))
 
   local opened = require("review-comments").draft({ start_line = 1, end_line = 1 })
   assert_equal(true, opened)
@@ -403,7 +402,7 @@ test("uses the active diffsplit pane as the source", function()
   local files = comment_files(root)
   assert_equal(1, #files)
   local metadata = comment_parts(read_file(files[1]))
-  assert_equal(expected_source, metadata.file)
+  assert_equal("new.lua", metadata.file)
   assert_equal("local value = 2", metadata.context)
 
   vim.cmd("only!")

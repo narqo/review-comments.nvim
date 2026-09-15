@@ -96,7 +96,7 @@ Each file is Markdown containing a raw JSON object as frontmatter, followed by a
 {
   "version": 1,
   "status": "draft",
-  "file": "/Users/example/project/internal/server/server.go",
+  "file": "internal/server/server.go",
   "range": {
     "start_line": 42,
     "end_line": 47
@@ -111,7 +111,7 @@ Metadata fields:
 
 - `version`: format version, initially `1`.
 - `status`: fixed to `draft`; the MVP does not manage status transitions.
-- `file`: normalized absolute path of the active source buffer.
+- `file`: normalized source path relative to the directory containing `.review-comments/`.
 - `range.start_line`: one-based inclusive first selected line.
 - `range.end_line`: one-based inclusive last selected line.
 - `context`: exact selected complete lines joined with `\n`.
@@ -177,11 +177,11 @@ lua/
 ## Acceptance criteria
 
 - A line selection in a normal source buffer creates one Markdown file under the repository's `.review-comments/` directory.
-- A selection in either active pane of a native `:diffsplit` records that pane's absolute file path and line range.
+- A selection in either active pane of a native `:diffsplit` records that pane's path relative to the directory containing `.review-comments/`, plus its line range.
 - Output files use the UTC timestamp and random hexadecimal filename format.
 - The output directory remains flat regardless of the source file's location.
 - The raw JSON frontmatter parses as JSON.
-- Metadata contains the correct absolute file path, inclusive range, and exact selected lines.
+- Metadata contains the correct relative file path, inclusive range, and exact selected lines.
 - The Markdown body matches the entered comment.
 - `<C-s>` and `:write` save exactly one file and close the editor.
 - `:quit!` creates no file.
@@ -195,7 +195,7 @@ lua/
 
 - Scan `<git-root>/.review-comments/*.md`.
 - Parse the raw JSON frontmatter and Markdown body.
-- Group comments by normalized absolute source path.
+- Resolve metadata paths relative to the directory containing `.review-comments/` and group comments by normalized source path.
 - Ignore malformed or unsupported files and report concise warnings.
 - Load comments automatically once when entering a source buffer.
 - Add `:RefreshComment` to rescan files created, changed, or removed externally.

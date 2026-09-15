@@ -58,7 +58,8 @@ local function scan(root, output_dir)
   local comments, errors = storage.scan(root, output_dir)
   local by_file = {}
   for _, comment in ipairs(comments) do
-    local key = path_key(comment.metadata.file)
+    local file = storage.resolve_file(root, comment.metadata.file)
+    local key = path_key(file)
     by_file[key] = by_file[key] or {}
     table.insert(by_file[key], comment)
   end

@@ -118,6 +118,17 @@ local function valid_line(value)
   return type(value) == "number" and value >= 1 and value == math.floor(value)
 end
 
+local function escapes_root(path)
+  return path == ".." or path:match("^%.%.[/\\]") ~= nil
+end
+
+function M.resolve_file(root, path)
+  if is_absolute(path) then
+    return vim.fs.normalize(path)
+  end
+  return vim.fs.normalize(vim.fs.joinpath(root, path))
+end
+
 local function split_frontmatter(content)
   if content:sub(1, 1) ~= "{" then
     return nil
@@ -176,8 +187,12 @@ function M.parse(content, path)
   if metadata.status ~= "draft" then
     return nil, string.format("unsupported comment status: %s", tostring(metadata.status))
   end
-  if type(metadata.file) ~= "string" or metadata.file == "" or not is_absolute(metadata.file) then
-    return nil, "metadata file must be an absolute path"
+  if type(metadata.file) ~= "string" or metadata.file == "" then
+    return nil, "metadata file must be a non-empty path"
+  end
+  metadata.file = vim.fs.normalize(metadata.file)
+  if not is_absolute(metadata.file) and escapes_root(metadata.file) then
+    return nil, "metadata file must stay inside the repository root"
   end
   if type(metadata.range) ~= "table"
     or not valid_line(metadata.range.start_line)
@@ -193,7 +208,6 @@ function M.parse(content, path)
     return nil, "comment body is empty"
   end
 
-  metadata.file = vim.fs.normalize(metadata.file)
   return {
     path = path,
     metadata = metadata,
