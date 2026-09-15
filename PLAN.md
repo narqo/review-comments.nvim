@@ -157,25 +157,10 @@ plugin/
   review-comments.lua
 lua/
   review-comments/
-    comments.lua
-    editor.lua
-    float.lua
-    git.lua
-    init.lua
-    storage.lua
-    viewer.lua
 ```
 
-Responsibilities:
-
-- `plugin/review-comments.lua`: register the ranged `:AddComment` command and the refresh and view commands.
-- `init.lua`: configuration, command entry point, and public API.
-- `comments.lua`: comment indexing, preview rendering, refresh, and view dispatch.
-- `editor.lua`: selection capture, floating editor lifecycle, save and cancel behavior.
-- `float.lua`: shared placement and border-label geometry.
-- `storage.lua`: filename generation, parsing, scanning, rendering, and exclusive file creation.
-- `viewer.lua`: read-only saved-comment display.
-- `git.lua`: repository-root discovery and source-path validation.
+- `plugin/review-comments.lua` registers commands and autocommands.
+- `lua/review-comments/` contains the Lua implementation.
 
 ## Initial implementation sequence
 
@@ -210,7 +195,6 @@ Responsibilities:
 
 - Scan `<git-root>/.review-comments/*.md`.
 - Parse the raw JSON frontmatter and Markdown body.
-- Validate required version 1 fields while allowing unknown fields for forward compatibility.
 - Group comments by normalized absolute source path.
 - Ignore malformed or unsupported files and report concise warnings.
 - Load comments automatically once when entering a source buffer.
@@ -220,7 +204,7 @@ Responsibilities:
 ### Render comment previews
 
 - Place an extmark on the final selected line of each loaded comment.
-- Render right-aligned virtual text rather than a synthetic marker, sign, or virtual line.
+- Render virtual text directly after the source text or using a synthetic marker, sign, or virtual line.
 - Use the first non-empty line of the Markdown comment body.
 - Preserve Markdown syntax in the preview.
 - Limit previews to 40 Unicode characters, including the ellipsis.

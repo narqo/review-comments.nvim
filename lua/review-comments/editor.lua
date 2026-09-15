@@ -1,4 +1,4 @@
-local float = require("review-comments.float")
+local geometry = require("review-comments.geometry")
 local git = require("review-comments.git")
 local storage = require("review-comments.storage")
 
@@ -140,14 +140,14 @@ function M.open(opts)
   vim.bo[buf].swapfile = false
   vim.bo[buf].filetype = "markdown"
 
-  local geometry = float.geometry({
+  local window_config = geometry.window_config({
     source_win = source_win,
     start_line = start_line,
     end_line = end_line,
     max_height = 3,
-    label = float.label(source_path, start_line, end_line),
+    label = geometry.label(source_path, start_line, end_line),
   })
-  local ok, win_or_err = pcall(vim.api.nvim_open_win, buf, true, geometry)
+  local ok, win_or_err = pcall(vim.api.nvim_open_win, buf, true, window_config)
   if not ok then
     pcall(vim.api.nvim_buf_delete, buf, { force = true })
     notify(string.format("Could not open comment editor: %s", win_or_err))

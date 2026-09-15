@@ -100,8 +100,8 @@ local function render(buf, index, source_path)
   table.sort(lines)
   for _, line in ipairs(lines) do
     vim.api.nvim_buf_set_extmark(buf, namespace, line - 1, 0, {
-      virt_text = { { M.preview(by_end_line[line]), "Comment" } },
-      virt_text_pos = "right_align",
+      virt_text = { { " -- " .. M.preview(by_end_line[line]), "Comment" } },
+      virt_text_pos = "eol",
       hl_mode = "combine",
       priority = 100,
     })

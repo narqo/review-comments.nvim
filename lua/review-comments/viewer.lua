@@ -1,4 +1,4 @@
-local float = require("review-comments.float")
+local geometry = require("review-comments.geometry")
 
 local M = {}
 
@@ -73,14 +73,14 @@ function M.open(opts)
   vim.bo[buf].modifiable = false
   vim.bo[buf].readonly = true
 
-  local geometry = float.geometry({
+  local window_config = geometry.window_config({
     source_win = opts.source_win,
     start_line = opts.cursor_line,
     end_line = opts.cursor_line,
     max_height = math.min(math.max(#lines, 1), 12),
-    label = float.label(opts.source_path, start_line, end_line),
+    label = geometry.label(opts.source_path, start_line, end_line),
   })
-  local ok, win_or_err = pcall(vim.api.nvim_open_win, buf, true, geometry)
+  local ok, win_or_err = pcall(vim.api.nvim_open_win, buf, true, window_config)
   if not ok then
     pcall(vim.api.nvim_buf_delete, buf, { force = true })
     return nil, string.format("Could not open comment viewer: %s", win_or_err)

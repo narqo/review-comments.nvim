@@ -8,7 +8,7 @@ function M.label(source_path, start_line, end_line)
   return string.format(" %s:%s ", vim.fs.basename(source_path), range)
 end
 
-function M.geometry(opts)
+function M.window_config(opts)
   local win_width = vim.api.nvim_win_get_width(opts.source_win)
   local win_height = vim.api.nvim_win_get_height(opts.source_win)
   local bordered = win_width >= 3 and win_height >= 3

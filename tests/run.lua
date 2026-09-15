@@ -230,7 +230,8 @@ test("saves a selected source range through the floating editor", function()
   local extmarks = preview_extmarks(source_buf)
   assert_equal(1, #extmarks)
   assert_equal(2, extmarks[1][2])
-  assert_equal("Include the request path.", extmarks[1][4].virt_text[1][1])
+  assert_equal("eol", extmarks[1][4].virt_text_pos)
+  assert_equal(" -- Include the request path.", extmarks[1][4].virt_text[1][1])
 
   vim.fn.delete(root, "rf")
 end)
@@ -266,7 +267,7 @@ test("loads previews, refreshes external changes, and views overlapping comments
   assert_equal(1, #extmarks)
   assert_equal(1, extmarks[1][2])
   local expected = vim.fn.strcharpart(first_body, 0, 27) .. "... (+1 more)"
-  assert_equal(expected, extmarks[1][4].virt_text[1][1])
+  assert_equal(" -- " .. expected, extmarks[1][4].virt_text[1][1])
   assert_equal(40, vim.fn.strchars(expected))
 
   local warned = false
@@ -302,7 +303,7 @@ test("loads previews, refreshes external changes, and views overlapping comments
   vim.cmd("RefreshComment")
   extmarks = preview_extmarks(source_buf)
   assert_equal(1, #extmarks)
-  assert_equal("Updated externally.", extmarks[1][4].virt_text[1][1])
+  assert_equal(" -- Updated externally.", extmarks[1][4].virt_text[1][1])
 
   vim.uv.fs_unlink(first_path)
   vim.uv.fs_unlink(vim.fs.joinpath(output_dir, "bad.md"))

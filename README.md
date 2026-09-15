@@ -16,7 +16,7 @@ Then:
 2. Run `:AddComment` while the selection is active.
 3. Enter the comment in the floating editor.
 4. Press `<C-s>` or run `:write` to save and close.
-5. The saved comment appears as right-aligned virtual text and is written under `<git-root>/.review-comments/`.
+5. The saved comment appears as virtual text after the source line and is written under `<git-root>/.review-comments/`.
 
 Use `:quit!` to cancel. The same workflow applies to the active pane of a native `:diffsplit`.
 
