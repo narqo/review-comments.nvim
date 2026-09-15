@@ -1,3 +1,4 @@
+local comments = require("draft-comments.comments")
 local editor = require("draft-comments.editor")
 
 local M = {}
@@ -49,6 +50,7 @@ function M.setup(opts)
     pcall(vim.keymap.del, "x", configured_keymap)
   end
 
+  comments.reset()
   config = next_config
   configured_keymap = config.keymap
 
@@ -62,11 +64,27 @@ end
 
 function M.draft(range)
   range = range or {}
+  local output_dir = config.output_dir
   return editor.open({
     start_line = range.start_line,
     end_line = range.end_line,
-    output_dir = config.output_dir,
+    output_dir = output_dir,
+    on_saved = function(event)
+      comments.comment_saved(event, output_dir)
+    end,
   })
+end
+
+function M.refresh()
+  return comments.refresh_buffer(vim.api.nvim_get_current_buf(), config.output_dir)
+end
+
+function M.view()
+  return comments.view_buffer(vim.api.nvim_get_current_buf(), config.output_dir)
+end
+
+function M._on_buf_enter(buf)
+  comments.load_buffer(buf, config.output_dir)
 end
 
 return M

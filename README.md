@@ -16,11 +16,25 @@ Then:
 2. Run `:DraftComment` while the selection is active.
 3. Enter the comment in the floating editor.
 4. Press `<C-s>` or run `:write` to save and close.
-5. Inspect `<git-root>/.review-comments/`.
+5. The saved comment appears as right-aligned virtual text and is written under `<git-root>/.review-comments/`.
 
-Use `:quit!` to cancel.
+Use `:quit!` to cancel. The same workflow applies to the active pane of a native `:diffsplit`.
 
-The same workflow applies to the active pane of a native `:diffsplit`.
+## Saved comments
+
+The plugin loads comments when entering a source buffer. Each preview shows up to 40 characters from the first non-empty line.
+
+Place the cursor inside a commented range and run:
+
+```vim
+:DraftCommentView
+```
+
+Reload comments created, changed, or removed externally with:
+
+```vim
+:DraftCommentsRefresh
+```
 
 ## Configuration
 

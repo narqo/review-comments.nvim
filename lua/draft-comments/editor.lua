@@ -1,3 +1,4 @@
+local float = require("draft-comments.float")
 local git = require("draft-comments.git")
 local storage = require("draft-comments.storage")
 
@@ -22,68 +23,6 @@ local function clear_stale_editor()
     pcall(vim.api.nvim_buf_delete, active.buf, { force = true })
   end
   active = nil
-end
-
-local function editor_geometry(source_win, start_line, end_line, source_path)
-  local win_width = vim.api.nvim_win_get_width(source_win)
-  local win_height = vim.api.nvim_win_get_height(source_win)
-  local bordered = win_width >= 3 and win_height >= 3
-  local border_rows = bordered and 2 or 0
-  local border_columns = bordered and 2 or 0
-  local width = math.max(1, win_width - border_columns)
-
-  local win_position = vim.fn.win_screenpos(source_win)
-  local start_position = vim.fn.screenpos(source_win, start_line, 1)
-  local end_position = vim.fn.screenpos(source_win, end_line, 1)
-  local start_row = start_position.row > 0 and start_position.row - win_position[1] or 0
-  local end_row = end_position.row > 0 and end_position.row - win_position[1] or start_row
-  local above = math.max(0, start_row)
-  local below = math.max(0, win_height - end_row - 1)
-
-  local place_below = below >= above
-  local available = place_below and below or above
-  if available <= border_rows then
-    available = win_height
-    place_below = true
-    end_row = -1
-  end
-
-  local height = math.max(1, math.min(3, available - border_rows))
-  local row
-  if place_below then
-    row = end_row + 1
-  else
-    row = math.max(0, start_row - height - border_rows)
-  end
-
-  local geometry = {
-    relative = "win",
-    win = source_win,
-    row = row,
-    col = 0,
-    width = width,
-    height = height,
-    style = "minimal",
-    zindex = 60,
-  }
-
-  if bordered then
-    local range = tostring(start_line)
-    if start_line ~= end_line then
-      range = string.format("%d-%d", start_line, end_line)
-    end
-    local label = string.format(" %s:%s ", vim.fs.basename(source_path), range)
-    geometry.border = "rounded"
-    if place_below then
-      geometry.title = label
-      geometry.title_pos = "center"
-    else
-      geometry.footer = label
-      geometry.footer_pos = "center"
-    end
-  end
-
-  return geometry
 end
 
 local function close_editor(draft)
@@ -126,6 +65,16 @@ function M.save(buf)
 
   vim.bo[buf].modified = false
   close_editor(draft)
+  if draft.on_saved then
+    local ok, callback_err = pcall(draft.on_saved, {
+      path = path,
+      root = draft.root,
+      source_buf = draft.source_buf,
+    })
+    if not ok then
+      notify(string.format("Comment was saved but could not be displayed: %s", callback_err))
+    end
+  end
   notify(string.format("Draft comment saved to %s", path), vim.log.levels.INFO)
   return true, path
 end
@@ -191,7 +140,13 @@ function M.open(opts)
   vim.bo[buf].swapfile = false
   vim.bo[buf].filetype = "markdown"
 
-  local geometry = editor_geometry(source_win, start_line, end_line, source_path)
+  local geometry = float.geometry({
+    source_win = source_win,
+    start_line = start_line,
+    end_line = end_line,
+    max_height = 3,
+    label = float.label(source_path, start_line, end_line),
+  })
   local ok, win_or_err = pcall(vim.api.nvim_open_win, buf, true, geometry)
   if not ok then
     pcall(vim.api.nvim_buf_delete, buf, { force = true })
@@ -211,6 +166,7 @@ function M.open(opts)
     root = root,
     output_dir = opts.output_dir,
     metadata = metadata,
+    on_saved = opts.on_saved,
   }
 
   vim.api.nvim_create_autocmd("BufWriteCmd", {

@@ -44,6 +44,18 @@ local function read_file(path)
   return table.concat(lines, "\n") .. "\n"
 end
 
+local function write_content(path, content)
+  local fd, open_err = vim.uv.fs_open(path, "w", 384)
+  if not fd then
+    fail(open_err)
+  end
+  local written, write_err = vim.uv.fs_write(fd, content, 0)
+  vim.uv.fs_close(fd)
+  if not written then
+    fail(write_err)
+  end
+end
+
 local function markdown_parts(content)
   local json, body = content:match("^```json\n(.-)\n```\n\n(.*)$")
   if not json then
@@ -57,6 +69,16 @@ local function comment_files(root)
   local files = vim.fn.glob(vim.fs.joinpath(directory, "*.md"), false, true)
   table.sort(files)
   return files
+end
+
+local function preview_extmarks(buf)
+  return vim.api.nvim_buf_get_extmarks(
+    buf,
+    require("draft-comments.comments").namespace(),
+    0,
+    -1,
+    { details = true }
+  )
 end
 
 local function border_text(value)
@@ -104,6 +126,42 @@ test("renders parseable JSON metadata and Markdown", function()
   assert_equal("Check the quoted value.\n", body)
 end)
 
+test("parses comment files and allows unknown metadata fields", function()
+  local storage = require("draft-comments.storage")
+  local rendered = storage.render({
+    file = "/tmp/source.lua",
+    range = { start_line = 4, end_line = 4 },
+    context = "return true",
+  }, "Keep this return value.")
+  rendered = rendered:gsub('  "status": "draft",', '  "status": "draft",\n  "unknown": true,')
+
+  local comment, parse_err = storage.parse(rendered, "/tmp/comment.md")
+  if not comment then
+    fail(parse_err)
+  end
+  assert_equal("/tmp/comment.md", comment.path)
+  assert_equal(true, comment.metadata.unknown)
+  assert_equal("Keep this return value.\n", comment.body)
+
+  local invalid, invalid_err = storage.parse("not a comment", "/tmp/bad.md")
+  assert_equal(nil, invalid)
+  assert_equal("missing fenced JSON metadata block", invalid_err)
+end)
+
+test("builds Unicode-safe comment previews", function()
+  local comments = require("draft-comments.comments")
+  local long = string.rep("界", 41)
+  local preview = comments.preview({ { body = "\n" .. long } })
+  assert_equal(string.rep("界", 37) .. "...", preview)
+  assert_equal(40, vim.fn.strchars(preview))
+
+  preview = comments.preview({
+    { body = "\n**first comment**" },
+    { body = "second comment" },
+  })
+  assert_equal("**first comment** (+1 more)", preview)
+end)
+
 test("creates unique flat comment files", function()
   local storage = require("draft-comments.storage")
   local root = vim.fn.tempname()
@@ -142,6 +200,7 @@ test("saves a selected source range through the floating editor", function()
   })
 
   vim.cmd("edit " .. vim.fn.fnameescape(source))
+  local source_buf = vim.api.nvim_get_current_buf()
   local expected_source = vim.fs.normalize(vim.api.nvim_buf_get_name(0))
   require("draft-comments").setup({})
   vim.cmd("2,3DraftComment")
@@ -165,6 +224,88 @@ test("saves a selected source range through the floating editor", function()
   assert_equal("  local method = request.method\n  return method", metadata.context)
   assert_equal("Include the request path.\nThis needs enough context for debugging.\n", body)
   assert(not vim.api.nvim_buf_is_valid(draft_buf), "draft buffer must close after saving")
+
+  local extmarks = preview_extmarks(source_buf)
+  assert_equal(1, #extmarks)
+  assert_equal(2, extmarks[1][2])
+  assert_equal("Include the request path.", extmarks[1][4].virt_text[1][1])
+
+  vim.fn.delete(root, "rf")
+end)
+
+test("loads previews, refreshes external changes, and views overlapping comments", function()
+  local storage = require("draft-comments.storage")
+  local root = create_repository()
+  local source = vim.fs.joinpath(root, "reviewed.lua")
+  local output_dir = vim.fs.joinpath(root, ".review-comments")
+  write_file(source, { "local value = 1", "return value", "" })
+  assert_equal(1, vim.fn.mkdir(output_dir, "p"))
+
+  local source_path = vim.fs.normalize(vim.uv.fs_realpath(source))
+  local first_body = "This comment is intentionally much longer than forty characters."
+  local first_path = vim.fs.joinpath(output_dir, "2026-01-01T000000.000Z-000001.md")
+  local second_path = vim.fs.joinpath(output_dir, "2026-01-01T000001.000Z-000002.md")
+  write_content(first_path, storage.render({
+    file = source_path,
+    range = { start_line = 1, end_line = 2 },
+    context = "local value = 1\nreturn value",
+  }, "\n" .. first_body))
+  write_content(second_path, storage.render({
+    file = source_path,
+    range = { start_line = 2, end_line = 2 },
+    context = "return value",
+  }, "Second comment."))
+  write_content(vim.fs.joinpath(output_dir, "bad.md"), "invalid")
+
+  require("draft-comments").setup({})
+  vim.cmd("edit " .. vim.fn.fnameescape(source))
+  local source_buf = vim.api.nvim_get_current_buf()
+  local extmarks = preview_extmarks(source_buf)
+  assert_equal(1, #extmarks)
+  assert_equal(1, extmarks[1][2])
+  local expected = vim.fn.strcharpart(first_body, 0, 27) .. "... (+1 more)"
+  assert_equal(expected, extmarks[1][4].virt_text[1][1])
+  assert_equal(40, vim.fn.strchars(expected))
+
+  local warned = false
+  for _, notification in ipairs(notifications) do
+    if notification.message:match("Ignored bad%.md:") then
+      warned = true
+      break
+    end
+  end
+  assert(warned, "malformed comment file must produce a warning")
+
+  vim.api.nvim_win_set_cursor(0, { 2, 0 })
+  vim.cmd("DraftCommentView")
+  local viewer_buf = vim.api.nvim_get_current_buf()
+  assert_equal(false, vim.bo[viewer_buf].modifiable)
+  assert_equal(true, vim.bo[viewer_buf].readonly)
+  local viewed = table.concat(vim.api.nvim_buf_get_lines(viewer_buf, 0, -1, false), "\n")
+  assert_match(viewed, "## Lines 1%-2")
+  assert_match(viewed, first_body:gsub("([%.%-])", "%%%1"))
+  assert_match(viewed, "## Lines 2")
+  assert_match(viewed, "Second comment%.")
+  assert_equal("reviewed.lua:1-2", border_text(
+    vim.api.nvim_win_get_config(0).title or vim.api.nvim_win_get_config(0).footer
+  ))
+  vim.cmd("quit")
+
+  vim.uv.fs_unlink(second_path)
+  write_content(first_path, storage.render({
+    file = source_path,
+    range = { start_line = 1, end_line = 2 },
+    context = "local value = 1\nreturn value",
+  }, "Updated externally."))
+  vim.cmd("DraftCommentsRefresh")
+  extmarks = preview_extmarks(source_buf)
+  assert_equal(1, #extmarks)
+  assert_equal("Updated externally.", extmarks[1][4].virt_text[1][1])
+
+  vim.uv.fs_unlink(first_path)
+  vim.uv.fs_unlink(vim.fs.joinpath(output_dir, "bad.md"))
+  vim.cmd("DraftCommentsRefresh")
+  assert_equal(0, #preview_extmarks(source_buf))
 
   vim.fn.delete(root, "rf")
 end)
@@ -270,6 +411,8 @@ test("registers the ranged command and manages the configured mapping", function
   local plugin = require("draft-comments")
   plugin.setup({})
   assert_equal(2, vim.fn.exists(":DraftComment"))
+  assert_equal(2, vim.fn.exists(":DraftCommentsRefresh"))
+  assert_equal(2, vim.fn.exists(":DraftCommentView"))
   assert_equal(0, vim.fn.exists(":ReviewComment"))
   assert_equal(nil, vim.fn.maparg("<leader>dc", "x", false, true).lhs)
 

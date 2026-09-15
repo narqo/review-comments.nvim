@@ -86,6 +86,125 @@ local function write_exclusive(path, content)
   return true
 end
 
+local function read_file(path)
+  local stat, stat_err = uv.fs_stat(path)
+  if not stat then
+    return nil, stat_err or "could not stat file"
+  end
+
+  local fd, open_err = uv.fs_open(path, "r", 0)
+  if not fd then
+    return nil, open_err
+  end
+
+  local content, read_err = uv.fs_read(fd, stat.size, 0)
+  local _, close_err = uv.fs_close(fd)
+  if not content then
+    return nil, read_err or "could not read file"
+  end
+  if close_err then
+    return nil, close_err
+  end
+  return content
+end
+
+local function is_absolute(path)
+  return path:sub(1, 1) == "/"
+    or path:match("^%a:[/\\]") ~= nil
+    or path:match("^[/\\][/\\]") ~= nil
+end
+
+local function valid_line(value)
+  return type(value) == "number" and value >= 1 and value == math.floor(value)
+end
+
+function M.parse(content, path)
+  if type(content) ~= "string" then
+    return nil, "content is not a string"
+  end
+
+  content = content:gsub("\r\n", "\n")
+  local encoded, body = content:match("^```json[ \t]*\n(.-)\n```[ \t]*\n\n(.*)$")
+  if not encoded then
+    return nil, "missing fenced JSON metadata block"
+  end
+
+  local ok, metadata = pcall(vim.json.decode, encoded)
+  if not ok or type(metadata) ~= "table" then
+    return nil, "invalid JSON metadata"
+  end
+  if metadata.version ~= 1 then
+    return nil, string.format("unsupported metadata version: %s", tostring(metadata.version))
+  end
+  if metadata.status ~= "draft" then
+    return nil, string.format("unsupported comment status: %s", tostring(metadata.status))
+  end
+  if type(metadata.file) ~= "string" or metadata.file == "" or not is_absolute(metadata.file) then
+    return nil, "metadata file must be an absolute path"
+  end
+  if type(metadata.range) ~= "table"
+    or not valid_line(metadata.range.start_line)
+    or not valid_line(metadata.range.end_line)
+    or metadata.range.start_line > metadata.range.end_line
+  then
+    return nil, "metadata range is invalid"
+  end
+  if type(metadata.context) ~= "string" then
+    return nil, "metadata context is not a string"
+  end
+  if not body:match("%S") then
+    return nil, "comment body is empty"
+  end
+
+  metadata.file = vim.fs.normalize(metadata.file)
+  return {
+    path = path,
+    metadata = metadata,
+    body = body,
+  }
+end
+
+function M.scan(root, output_dir)
+  local directory = vim.fs.joinpath(root, output_dir)
+  local handle, scan_err, scan_code = uv.fs_scandir(directory)
+  if not handle then
+    if scan_code == "ENOENT" then
+      return {}, {}
+    end
+    return {}, { { path = directory, error = scan_err or "could not scan directory" } }
+  end
+
+  local paths = {}
+  while true do
+    local name, entry_type = uv.fs_scandir_next(handle)
+    if not name then
+      break
+    end
+    if name:match("%.md$") and (entry_type == "file" or entry_type == nil) then
+      table.insert(paths, vim.fs.joinpath(directory, name))
+    end
+  end
+  table.sort(paths)
+
+  local comments = {}
+  local errors = {}
+  for _, comment_path in ipairs(paths) do
+    local content, read_err = read_file(comment_path)
+    if not content then
+      table.insert(errors, { path = comment_path, error = read_err })
+    else
+      local comment, parse_err = M.parse(content, comment_path)
+      if comment then
+        table.insert(comments, comment)
+      else
+        table.insert(errors, { path = comment_path, error = parse_err })
+      end
+    end
+  end
+
+  return comments, errors
+end
+
 function M.render(metadata, body)
   local lines = {
     "```json",

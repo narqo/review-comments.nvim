@@ -4,7 +4,11 @@
 
 Build a small Lua plugin for drafting review comments from normal source buffers and native Neovim `:diffsplit` windows. Each comment is written to a generated Markdown file for consumption by an external reviewer.
 
-The MVP only creates files. It does not load, display, edit, delete, resolve, or publish existing comments.
+The initial MVP only created files. It did not edit, delete, resolve, or publish existing comments.
+
+## Current status
+
+The create and saved-comment visibility phases are implemented and covered by headless tests. The plugin supports source buffers and native `:diffsplit` windows, writes one file per comment, renders comment previews, refreshes external changes, and opens saved comments in a read-only viewer.
 
 ## User workflow
 
@@ -42,6 +46,8 @@ Create a temporary Markdown buffer in a floating window:
 - Anchor it below the selected range in the active window.
 - Place it above the range when there is insufficient space below.
 - Constrain its dimensions to the active window, including narrow diff panes.
+- Use a content height of three lines when space permits.
+- Show `<filename>:<range>` in the border nearest the selected range: the top border when the editor is below the range, and the bottom border when it is above.
 - Start in insert mode.
 - Set the buffer to `filetype=markdown`.
 - Use an `acwrite` buffer and handle `BufWriteCmd` so `:write` saves the draft rather than writing the temporary buffer.
@@ -74,7 +80,7 @@ Create one file per comment using:
 <utc-iso-datetime>-<6-random-hex>.md
 ```
 
-Use filesystem-safe ISO 8601 basic format with millisecond precision. Example:
+Use a filesystem-safe ISO 8601 format with millisecond precision. Example:
 
 ```text
 2026-03-04T162109.123Z-8f3a1c.md
@@ -153,21 +159,27 @@ plugin/
   draft-comments.lua
 lua/
   draft-comments/
-    init.lua
+    comments.lua
     editor.lua
-    storage.lua
+    float.lua
     git.lua
+    init.lua
+    storage.lua
+    viewer.lua
 ```
 
 Responsibilities:
 
 - `plugin/draft-comments.lua`: register the ranged `:DraftComment` command.
 - `init.lua`: configuration, command entry point, and public API.
+- `comments.lua`: comment indexing, preview rendering, refresh, and view dispatch.
 - `editor.lua`: selection capture, floating editor lifecycle, save and cancel behavior.
-- `storage.lua`: filename generation, JSON/Markdown rendering, exclusive file creation.
+- `float.lua`: shared placement and border-label geometry.
+- `storage.lua`: filename generation, parsing, scanning, rendering, and exclusive file creation.
+- `viewer.lua`: read-only saved-comment display.
 - `git.lua`: repository-root discovery and source-path validation.
 
-## Implementation sequence
+## Initial implementation sequence
 
 1. Add the plugin module, default configuration, and ranged command.
 2. Capture and normalize visual line ranges from the active buffer.
@@ -194,16 +206,62 @@ Responsibilities:
 - Existing files are never overwritten.
 - The plugin does not create mappings unless configured.
 
+## Saved-comment visibility
+
+### Parse and index comments
+
+- Scan `<git-root>/.review-comments/*.md`.
+- Parse the fenced JSON metadata block and Markdown body.
+- Validate required version 1 fields while allowing unknown fields for forward compatibility.
+- Group comments by normalized absolute source path.
+- Ignore malformed or unsupported files and report concise warnings.
+- Load comments automatically once when entering a source buffer.
+- Add `:DraftCommentsRefresh` to rescan files created, changed, or removed externally.
+- Add newly saved comments to the in-memory index immediately.
+
+### Render comment previews
+
+- Place an extmark on the final selected line of each loaded comment.
+- Render right-aligned virtual text rather than a synthetic marker, sign, or virtual line.
+- Use the first non-empty line of the Markdown comment body.
+- Preserve Markdown syntax in the preview.
+- Limit previews to 40 Unicode characters, including the ellipsis.
+- If a single preview exceeds 40 characters, render its first 37 characters followed by `...`.
+- If multiple comments end on the same source line, show the oldest comment followed by `(+N more)`.
+- Keep the combined preview and count within 40 characters, truncating the preview with `...` when needed.
+- Do not add screen lines or alter `:diffsplit` alignment.
+
+### View comments
+
+Add `:DraftCommentView`. When the cursor is inside one or more comment ranges:
+
+- Open a read-only floating Markdown window next to the range.
+- Show every comment whose range contains the cursor line.
+- Use `<filename>:<range>` in the border nearest the source range.
+- Close with `q` or `:quit`.
+- Do not permit editing or status changes.
+
+### Saved-comment visibility acceptance criteria
+
+- Entering a source buffer displays previews for matching comment files.
+- A preview uses the first non-empty comment line and never exceeds 40 Unicode characters.
+- Long previews end in `...` and remain within the limit.
+- Multiple comments on one final line show one preview and an accurate `(+N more)` count within the limit.
+- Preview extmarks do not add rows or desynchronize native diff panes.
+- `:DraftCommentsRefresh` reflects external file additions, changes, and removals.
+- A newly saved comment appears without requiring a refresh.
+- `:DraftCommentView` shows all comments covering the cursor line in a read-only window.
+- Malformed comment files do not prevent valid comments from loading.
+
 ## Future work
 
 Explicitly defer the following:
 
-- loading comments from disk;
-- inline markers or virtual text for existing comments;
 - editing or deleting comments;
 - comment status transitions and management;
 - anchor relocation after source changes;
 - parsing diff hunks or tracking old/new diff sides;
 - GitHub or other review-service integration;
 - publishing comments;
-- modifying Git ignore configuration.
+- modifying Git ignore configuration;
+- watching `.review-comments/` continuously for filesystem changes.
