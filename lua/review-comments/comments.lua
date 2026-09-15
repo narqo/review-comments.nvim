@@ -1,15 +1,15 @@
-local git = require("draft-comments.git")
-local storage = require("draft-comments.storage")
-local viewer = require("draft-comments.viewer")
+local git = require("review-comments.git")
+local storage = require("review-comments.storage")
+local viewer = require("review-comments.viewer")
 
 local M = {}
 
-local namespace = vim.api.nvim_create_namespace("draft-comments-previews")
+local namespace = vim.api.nvim_create_namespace("review-comments-previews")
 local indexes = {}
 local attachments = {}
 
 local function notify(message, level)
-  vim.notify(message, level or vim.log.levels.ERROR, { title = "draft-comments.nvim" })
+  vim.notify(message, level or vim.log.levels.ERROR, { title = "review-comments.nvim" })
 end
 
 local function index_key(root, output_dir)

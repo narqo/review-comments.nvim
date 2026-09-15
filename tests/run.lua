@@ -56,12 +56,12 @@ local function write_content(path, content)
   end
 end
 
-local function markdown_parts(content)
-  local json, body = content:match("^```json\n(.-)\n```\n\n(.*)$")
-  if not json then
-    fail("comment file does not have the expected Markdown structure")
+local function comment_parts(content)
+  local comment, parse_err = require("review-comments.storage").parse(content)
+  if not comment then
+    fail(parse_err)
   end
-  return vim.json.decode(json), body
+  return comment.metadata, comment.body
 end
 
 local function comment_files(root)
@@ -74,7 +74,7 @@ end
 local function preview_extmarks(buf)
   return vim.api.nvim_buf_get_extmarks(
     buf,
-    require("draft-comments.comments").namespace(),
+    require("review-comments.comments").namespace(),
     0,
     -1,
     { details = true }
@@ -110,14 +110,16 @@ vim.notify = function(message, level)
 end
 
 test("renders parseable JSON metadata and Markdown", function()
-  local storage = require("draft-comments.storage")
+  local storage = require("review-comments.storage")
   local rendered = storage.render({
     file = "/tmp/source.lua",
     range = { start_line = 2, end_line = 3 },
     context = "local quoted = \"value\"\nreturn quoted",
   }, "Check the quoted value.")
 
-  local metadata, body = markdown_parts(rendered)
+  assert_equal("{", rendered:sub(1, 1))
+  assert_equal(nil, rendered:find("```json", 1, true))
+  local metadata, body = comment_parts(rendered)
   assert_equal(1, metadata.version)
   assert_equal("draft", metadata.status)
   assert_equal("/tmp/source.lua", metadata.file)
@@ -127,7 +129,7 @@ test("renders parseable JSON metadata and Markdown", function()
 end)
 
 test("parses comment files and allows unknown metadata fields", function()
-  local storage = require("draft-comments.storage")
+  local storage = require("review-comments.storage")
   local rendered = storage.render({
     file = "/tmp/source.lua",
     range = { start_line = 4, end_line = 4 },
@@ -145,11 +147,11 @@ test("parses comment files and allows unknown metadata fields", function()
 
   local invalid, invalid_err = storage.parse("not a comment", "/tmp/bad.md")
   assert_equal(nil, invalid)
-  assert_equal("missing fenced JSON metadata block", invalid_err)
+  assert_equal("missing JSON frontmatter", invalid_err)
 end)
 
 test("builds Unicode-safe comment previews", function()
-  local comments = require("draft-comments.comments")
+  local comments = require("review-comments.comments")
   local long = string.rep("界", 41)
   local preview = comments.preview({ { body = "\n" .. long } })
   assert_equal(string.rep("界", 37) .. "...", preview)
@@ -163,7 +165,7 @@ test("builds Unicode-safe comment previews", function()
 end)
 
 test("creates unique flat comment files", function()
-  local storage = require("draft-comments.storage")
+  local storage = require("review-comments.storage")
   local root = vim.fn.tempname()
   assert_equal(1, vim.fn.mkdir(root, "p"))
   local metadata = {
@@ -202,7 +204,7 @@ test("saves a selected source range through the floating editor", function()
   vim.cmd("edit " .. vim.fn.fnameescape(source))
   local source_buf = vim.api.nvim_get_current_buf()
   local expected_source = vim.fs.normalize(vim.api.nvim_buf_get_name(0))
-  require("draft-comments").setup({})
+  require("review-comments").setup({})
   vim.cmd("2,3AddComment")
 
   local draft_buf = vim.api.nvim_get_current_buf()
@@ -218,7 +220,7 @@ test("saves a selected source range through the floating editor", function()
 
   local files = comment_files(root)
   assert_equal(1, #files)
-  local metadata, body = markdown_parts(read_file(files[1]))
+  local metadata, body = comment_parts(read_file(files[1]))
   assert_equal(expected_source, metadata.file)
   assert_equal({ start_line = 2, end_line = 3 }, metadata.range)
   assert_equal("  local method = request.method\n  return method", metadata.context)
@@ -234,7 +236,7 @@ test("saves a selected source range through the floating editor", function()
 end)
 
 test("loads previews, refreshes external changes, and views overlapping comments", function()
-  local storage = require("draft-comments.storage")
+  local storage = require("review-comments.storage")
   local root = create_repository()
   local source = vim.fs.joinpath(root, "reviewed.lua")
   local output_dir = vim.fs.joinpath(root, ".review-comments")
@@ -257,7 +259,7 @@ test("loads previews, refreshes external changes, and views overlapping comments
   }, "Second comment."))
   write_content(vim.fs.joinpath(output_dir, "bad.md"), "invalid")
 
-  require("draft-comments").setup({})
+  require("review-comments").setup({})
   vim.cmd("edit " .. vim.fn.fnameescape(source))
   local source_buf = vim.api.nvim_get_current_buf()
   local extmarks = preview_extmarks(source_buf)
@@ -322,7 +324,7 @@ test("places the label below an editor shown above the range", function()
   vim.cmd("edit " .. vim.fn.fnameescape(source))
   vim.api.nvim_win_set_cursor(0, { 30, 0 })
   vim.cmd("normal! zb")
-  local opened = require("draft-comments").draft({ start_line = 30, end_line = 30 })
+  local opened = require("review-comments").draft({ start_line = 30, end_line = 30 })
   assert_equal(true, opened)
 
   local window_config = vim.api.nvim_win_get_config(0)
@@ -340,7 +342,7 @@ test("rejects empty comments and cancels without writing", function()
   write_file(source, { "return true" })
 
   vim.cmd("edit " .. vim.fn.fnameescape(source))
-  local opened = require("draft-comments").draft({ start_line = 1, end_line = 1 })
+  local opened = require("review-comments").draft({ start_line = 1, end_line = 1 })
   assert_equal(true, opened)
   local draft_buf = vim.api.nvim_get_current_buf()
 
@@ -364,8 +366,8 @@ test("keeps the editor open when the output path is not writable", function()
   write_file(output_path, { "not a directory" })
 
   vim.cmd("edit " .. vim.fn.fnameescape(source))
-  require("draft-comments").setup({})
-  local opened = require("draft-comments").draft({ start_line = 1, end_line = 1 })
+  require("review-comments").setup({})
+  local opened = require("review-comments").draft({ start_line = 1, end_line = 1 })
   assert_equal(true, opened)
   local draft_buf = vim.api.nvim_get_current_buf()
   vim.api.nvim_buf_set_lines(draft_buf, 0, -1, false, { "This should remain open." })
@@ -391,7 +393,7 @@ test("uses the active diffsplit pane as the source", function()
   assert_equal("new.lua", vim.fs.basename(vim.api.nvim_buf_get_name(0)))
   local expected_source = vim.fs.normalize(vim.api.nvim_buf_get_name(0))
 
-  local opened = require("draft-comments").draft({ start_line = 1, end_line = 1 })
+  local opened = require("review-comments").draft({ start_line = 1, end_line = 1 })
   assert_equal(true, opened)
   local draft_buf = vim.api.nvim_get_current_buf()
   vim.api.nvim_buf_set_lines(draft_buf, 0, -1, false, { "Why did this value change?" })
@@ -399,7 +401,7 @@ test("uses the active diffsplit pane as the source", function()
 
   local files = comment_files(root)
   assert_equal(1, #files)
-  local metadata = markdown_parts(read_file(files[1]))
+  local metadata = comment_parts(read_file(files[1]))
   assert_equal(expected_source, metadata.file)
   assert_equal("local value = 2", metadata.context)
 
@@ -408,7 +410,7 @@ test("uses the active diffsplit pane as the source", function()
 end)
 
 test("registers the ranged command and manages the configured mapping", function()
-  local plugin = require("draft-comments")
+  local plugin = require("review-comments")
   plugin.setup({})
   assert_equal(2, vim.fn.exists(":AddComment"))
   assert_equal(2, vim.fn.exists(":RefreshComment"))

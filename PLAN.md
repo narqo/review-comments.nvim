@@ -1,4 +1,4 @@
-# Draft Comments Neovim Plugin Plan
+# Review Comments Neovim Plugin Plan
 
 ## Goal
 
@@ -90,10 +90,9 @@ Create files exclusively and retry with a new random suffix on collision. Never 
 
 ## File format
 
-Each file is Markdown containing a fenced JSON metadata block followed by the comment body.
+Each file is Markdown containing a raw JSON object as frontmatter, followed by a blank line and the comment body.
 
-````markdown
-```json
+```text
 {
   "version": 1,
   "status": "draft",
@@ -104,10 +103,9 @@ Each file is Markdown containing a fenced JSON metadata block followed by the co
   },
   "context": "func handleRequest(w http.ResponseWriter, r *http.Request) {\n    return serveRequest(w, r)\n}"
 }
-```
 
 The error should include the request method and path.
-````
+```
 
 Metadata fields:
 
@@ -125,7 +123,7 @@ Encode metadata with Neovim's JSON encoder so quotes, control characters, backsl
 Provide a minimal setup function:
 
 ```lua
-require("draft-comments").setup({
+require("review-comments").setup({
   output_dir = ".review-comments",
   keymap = nil,
 })
@@ -156,9 +154,9 @@ Errors before opening the editor should leave the source window unchanged. Save 
 
 ```text
 plugin/
-  draft-comments.lua
+  review-comments.lua
 lua/
-  draft-comments/
+  review-comments/
     comments.lua
     editor.lua
     float.lua
@@ -170,7 +168,7 @@ lua/
 
 Responsibilities:
 
-- `plugin/draft-comments.lua`: register the ranged `:AddComment` command and the refresh and view commands.
+- `plugin/review-comments.lua`: register the ranged `:AddComment` command and the refresh and view commands.
 - `init.lua`: configuration, command entry point, and public API.
 - `comments.lua`: comment indexing, preview rendering, refresh, and view dispatch.
 - `editor.lua`: selection capture, floating editor lifecycle, save and cancel behavior.
@@ -197,7 +195,7 @@ Responsibilities:
 - A selection in either active pane of a native `:diffsplit` records that pane's absolute file path and line range.
 - Output files use the UTC timestamp and random hexadecimal filename format.
 - The output directory remains flat regardless of the source file's location.
-- The fenced metadata block parses as JSON.
+- The raw JSON frontmatter parses as JSON.
 - Metadata contains the correct absolute file path, inclusive range, and exact selected lines.
 - The Markdown body matches the entered comment.
 - `<C-s>` and `:write` save exactly one file and close the editor.
@@ -211,7 +209,7 @@ Responsibilities:
 ### Parse and index comments
 
 - Scan `<git-root>/.review-comments/*.md`.
-- Parse the fenced JSON metadata block and Markdown body.
+- Parse the raw JSON frontmatter and Markdown body.
 - Validate required version 1 fields while allowing unknown fields for forward compatibility.
 - Group comments by normalized absolute source path.
 - Ignore malformed or unsupported files and report concise warnings.

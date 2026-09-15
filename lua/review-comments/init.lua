@@ -1,5 +1,5 @@
-local comments = require("draft-comments.comments")
-local editor = require("draft-comments.editor")
+local comments = require("review-comments.comments")
+local editor = require("review-comments.editor")
 
 local M = {}
 
@@ -13,10 +13,10 @@ local configured_keymap
 
 local function normalize_output_dir(path)
   if type(path) ~= "string" or path == "" then
-    error("draft-comments: output_dir must be a non-empty string")
+    error("review-comments: output_dir must be a non-empty string")
   end
   if path:find("\0", 1, true) then
-    error("draft-comments: output_dir must not contain NUL bytes")
+    error("review-comments: output_dir must not contain NUL bytes")
   end
 
   local normalized = vim.fs.normalize(path)
@@ -26,7 +26,7 @@ local function normalize_output_dir(path)
   local escapes_root = normalized == ".." or normalized:match("^%.%.[/\\]") ~= nil
 
   if absolute or escapes_root then
-    error("draft-comments: output_dir must stay inside the Git repository")
+    error("review-comments: output_dir must stay inside the Git repository")
   end
 
   return normalized
@@ -35,10 +35,10 @@ end
 function M.setup(opts)
   opts = opts or {}
   if type(opts) ~= "table" then
-    error("draft-comments: setup options must be a table")
+    error("review-comments: setup options must be a table")
   end
   if opts.keymap ~= nil and (type(opts.keymap) ~= "string" or opts.keymap == "") then
-    error("draft-comments: keymap must be a non-empty string or nil")
+    error("review-comments: keymap must be a non-empty string or nil")
   end
 
   local next_config = {

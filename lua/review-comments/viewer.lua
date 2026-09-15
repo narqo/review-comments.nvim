@@ -1,9 +1,9 @@
-local float = require("draft-comments.float")
+local float = require("review-comments.float")
 
 local M = {}
 
 local active
-local autocmd_group = vim.api.nvim_create_augroup("DraftCommentsViewer", { clear = false })
+local autocmd_group = vim.api.nvim_create_augroup("ReviewCommentsViewer", { clear = false })
 
 local function body_lines(body)
   local lines = vim.split(body, "\n", { plain = true })

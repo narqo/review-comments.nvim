@@ -1,4 +1,4 @@
-# draft-comments.nvim
+# review-comments.nvim
 
 Draft review comments from source buffers.
 
@@ -41,7 +41,7 @@ Reload comments created, changed, or removed externally with:
 No mapping is installed by default. Add one through `setup()`:
 
 ```lua
-require("draft-comments").setup({
+require("review-comments").setup({
   output_dir = ".review-comments",
   keymap = "<leader>ac",
 })
@@ -55,4 +55,4 @@ The plugin requires Neovim 0.10 or newer, Git, and a named file inside a Git wor
 make test
 ```
 
-Each comment is stored as a separate Markdown file containing JSON metadata with a `draft` status, absolute source path, selected line range, and selected source text.
+Each comment is stored as a separate Markdown file with raw JSON frontmatter containing a `draft` status, absolute source path, selected line range, and selected source text.

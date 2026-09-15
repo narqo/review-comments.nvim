@@ -118,15 +118,52 @@ local function valid_line(value)
   return type(value) == "number" and value >= 1 and value == math.floor(value)
 end
 
+local function split_frontmatter(content)
+  if content:sub(1, 1) ~= "{" then
+    return nil
+  end
+
+  local depth = 0
+  local in_string = false
+  local escaped = false
+  for index = 1, #content do
+    local byte = content:sub(index, index)
+    if in_string then
+      if escaped then
+        escaped = false
+      elseif byte == "\\" then
+        escaped = true
+      elseif byte == '"' then
+        in_string = false
+      end
+    elseif byte == '"' then
+      in_string = true
+    elseif byte == "{" then
+      depth = depth + 1
+    elseif byte == "}" then
+      depth = depth - 1
+      if depth == 0 then
+        if content:sub(index + 1, index + 2) ~= "\n\n" then
+          return nil
+        end
+        return content:sub(1, index), content:sub(index + 3)
+      end
+    end
+  end
+end
+
 function M.parse(content, path)
   if type(content) ~= "string" then
     return nil, "content is not a string"
   end
 
   content = content:gsub("\r\n", "\n")
-  local encoded, body = content:match("^```json[ \t]*\n(.-)\n```[ \t]*\n\n(.*)$")
+  local encoded, body = split_frontmatter(content)
   if not encoded then
-    return nil, "missing fenced JSON metadata block"
+    encoded, body = content:match("^```json[ \t]*\n(.-)\n```[ \t]*\n\n(.*)$")
+  end
+  if not encoded then
+    return nil, "missing JSON frontmatter"
   end
 
   local ok, metadata = pcall(vim.json.decode, encoded)
@@ -207,7 +244,6 @@ end
 
 function M.render(metadata, body)
   local lines = {
-    "```json",
     "{",
     '  "version": 1,',
     '  "status": "draft",',
@@ -218,7 +254,6 @@ function M.render(metadata, body)
     "  },",
     string.format('  "context": %s', vim.json.encode(metadata.context)),
     "}",
-    "```",
     "",
   }
 

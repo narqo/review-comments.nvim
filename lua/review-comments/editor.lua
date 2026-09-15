@@ -1,14 +1,14 @@
-local float = require("draft-comments.float")
-local git = require("draft-comments.git")
-local storage = require("draft-comments.storage")
+local float = require("review-comments.float")
+local git = require("review-comments.git")
+local storage = require("review-comments.storage")
 
 local M = {}
 
 local active
-local autocmd_group = vim.api.nvim_create_augroup("DraftCommentsEditor", { clear = false })
+local autocmd_group = vim.api.nvim_create_augroup("ReviewCommentsEditor", { clear = false })
 
 local function notify(message, level)
-  vim.notify(message, level or vim.log.levels.ERROR, { title = "draft-comments.nvim" })
+  vim.notify(message, level or vim.log.levels.ERROR, { title = "review-comments.nvim" })
 end
 
 local function clear_stale_editor()
