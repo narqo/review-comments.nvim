@@ -18,7 +18,7 @@ Then:
 4. Run `:write` or `:w` to save and close.
 5. The saved comment appears as virtual text after the source line and is written under `<git-root>/.review-comments/`.
 
-Use `:quit!` to cancel. The same workflow applies to the active pane of a native `:diffsplit`.
+The editor starts at one line and grows with the comment body up to five lines. Use `:quit!` to cancel. The same workflow applies to the active pane of a native `:diffsplit`.
 
 ## Saved comments
 

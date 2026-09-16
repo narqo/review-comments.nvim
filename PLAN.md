@@ -46,7 +46,7 @@ Create a temporary Markdown buffer in a floating window:
 - Anchor it below the selected range in the active window.
 - Place it above the range when there is insufficient space below.
 - Constrain its dimensions to the active window, including narrow diff panes.
-- Use a content height of three lines when space permits.
+- Start with a one-line content area and grow or shrink with the comment body, up to five lines when space permits.
 - Show `<filename>:<range>` in the border nearest the selected range: the top border when the editor is below the range, and the bottom border when it is above.
 - Start in insert mode.
 - Set the buffer to `filetype=markdown`.
@@ -183,6 +183,7 @@ lua/
 - The raw JSON frontmatter parses as JSON.
 - Metadata contains the correct relative file path, inclusive range, and exact selected lines.
 - The Markdown body matches the entered comment.
+- The editor starts at one line and tracks the comment body height up to five lines.
 - `:write` and `:w` save exactly one file and close the editor.
 - `:quit!` creates no file.
 - Empty comments and write failures do not close the editor.

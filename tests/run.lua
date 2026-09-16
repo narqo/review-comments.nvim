@@ -192,6 +192,8 @@ test("creates unique flat comment files", function()
 end)
 
 test("saves a selected source range through the floating editor", function()
+  local old_lines = vim.o.lines
+  vim.o.lines = 60
   local root = create_repository()
   local source_dir = vim.fs.joinpath(root, "internal")
   local source = vim.fs.joinpath(source_dir, "server.lua")
@@ -213,12 +215,25 @@ test("saves a selected source range through the floating editor", function()
   assert(vim.fn.maparg("<C-s>", "n", false, true).buffer ~= 1, "normal-mode <C-s> must not be buffer-local")
   assert(vim.fn.maparg("<C-s>", "i", false, true).buffer ~= 1, "insert-mode <C-s> must not be buffer-local")
   local window_config = vim.api.nvim_win_get_config(0)
-  assert(window_config.height >= 1 and window_config.height <= 3, "editor height must fit within three lines")
+  assert_equal(1, window_config.height)
   assert_equal("server.lua:2-3", border_text(window_config.title))
+  vim.api.nvim_buf_set_lines(draft_buf, 0, -1, false, {
+    "one",
+    "two",
+    "three",
+    "four",
+    "five",
+    "six",
+  })
+  vim.api.nvim_exec_autocmds("TextChanged", { buffer = draft_buf })
+  assert_equal(5, vim.api.nvim_win_get_config(0).height)
+
   vim.api.nvim_buf_set_lines(draft_buf, 0, -1, false, {
     "Include the request path.",
     "This needs enough context for debugging.",
   })
+  vim.api.nvim_exec_autocmds("TextChanged", { buffer = draft_buf })
+  assert_equal(2, vim.api.nvim_win_get_config(0).height)
   vim.cmd("w")
 
   local files = comment_files(root)
@@ -236,6 +251,7 @@ test("saves a selected source range through the floating editor", function()
   assert_equal("eol", extmarks[1][4].virt_text_pos)
   assert_equal(" -- Include the request path.", extmarks[1][4].virt_text[1][1])
 
+  vim.o.lines = old_lines
   vim.fn.delete(root, "rf")
 end)
 
@@ -331,7 +347,7 @@ test("places the label below an editor shown above the range", function()
   assert_equal(true, opened)
 
   local window_config = vim.api.nvim_win_get_config(0)
-  assert(window_config.height >= 1 and window_config.height <= 3, "editor height must fit within three lines")
+  assert_equal(1, window_config.height)
   assert_equal(nil, border_text(window_config.title))
   assert_equal("bottom.lua:30", border_text(window_config.footer))
 

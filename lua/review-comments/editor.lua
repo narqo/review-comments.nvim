@@ -25,6 +25,24 @@ local function clear_stale_editor()
   active = nil
 end
 
+local function resize_editor(draft)
+  if not vim.api.nvim_buf_is_valid(draft.buf)
+    or not vim.api.nvim_win_is_valid(draft.win)
+    or not vim.api.nvim_win_is_valid(draft.source_win)
+  then
+    return
+  end
+
+  local window_config = geometry.window_config({
+    source_win = draft.source_win,
+    start_line = draft.start_line,
+    end_line = draft.end_line,
+    max_height = math.min(vim.api.nvim_buf_line_count(draft.buf), 5),
+    label = geometry.label(draft.source_path, draft.start_line, draft.end_line),
+  })
+  pcall(vim.api.nvim_win_set_config, draft.win, window_config)
+end
+
 local function close_editor(draft)
   active = nil
 
@@ -150,7 +168,7 @@ function M.open(opts)
     source_win = source_win,
     start_line = start_line,
     end_line = end_line,
-    max_height = 2,
+    max_height = 1,
     label = geometry.label(source_path, start_line, end_line),
   })
   local ok, win_or_err = pcall(vim.api.nvim_open_win, buf, true, window_config)
@@ -169,6 +187,9 @@ function M.open(opts)
     win = win,
     source_buf = source_buf,
     source_win = source_win,
+    source_path = source_path,
+    start_line = start_line,
+    end_line = end_line,
     root = root,
     output_dir = opts.output_dir,
     metadata = metadata,
@@ -180,6 +201,15 @@ function M.open(opts)
     group = autocmd_group,
     callback = function(args)
       M.save(args.buf)
+    end,
+  })
+  vim.api.nvim_create_autocmd({ "TextChanged", "TextChangedI" }, {
+    buffer = buf,
+    group = autocmd_group,
+    callback = function()
+      if active and active.buf == buf then
+        resize_editor(active)
+      end
     end,
   })
   vim.api.nvim_create_autocmd("BufWipeout", {
