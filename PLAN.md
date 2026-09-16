@@ -16,7 +16,7 @@ The create and saved-comment visibility phases are implemented and covered by he
 2. Select one or more lines in visual mode.
 3. Run `:'<,'>AddComment` or a configured visual-mode mapping.
 4. Enter the comment in a Markdown floating buffer anchored below the selection.
-5. Save with `<C-s>` or `:write`.
+5. Save with `:write` or `:w`.
 6. The plugin creates the comment file and closes the floating window.
 
 Use `:quit!` to cancel without creating a file.
@@ -51,7 +51,7 @@ Create a temporary Markdown buffer in a floating window:
 - Start in insert mode.
 - Set the buffer to `filetype=markdown`.
 - Use an `acwrite` buffer and handle `BufWriteCmd` so `:write` saves the draft rather than writing the temporary buffer.
-- Map `<C-s>` in insert and normal modes to the same save operation.
+- Use the standard `:write` or `:w` command to save.
 - Reject an empty or whitespace-only comment and keep the editor open.
 - Keep the editor open when directory creation or file writing fails.
 - Close and wipe the temporary buffer after a successful save.
@@ -169,7 +169,7 @@ lua/
 3. Resolve the absolute source path and Git repository root.
 4. Implement the anchored Markdown editor and cancellation behavior.
 5. Implement metadata rendering and exclusive file creation.
-6. Connect `<C-s>` and `BufWriteCmd` to save and close.
+6. Connect `BufWriteCmd` to save and close.
 7. Add error handling for unsupported buffers, empty comments, and storage failures.
 8. Add headless tests for pure formatting and storage logic, followed by functional editor tests.
 9. Document installation, configuration, command usage, and the suggested mapping.
@@ -183,7 +183,7 @@ lua/
 - The raw JSON frontmatter parses as JSON.
 - Metadata contains the correct relative file path, inclusive range, and exact selected lines.
 - The Markdown body matches the entered comment.
-- `<C-s>` and `:write` save exactly one file and close the editor.
+- `:write` and `:w` save exactly one file and close the editor.
 - `:quit!` creates no file.
 - Empty comments and write failures do not close the editor.
 - Existing files are never overwritten.

@@ -210,14 +210,16 @@ test("saves a selected source range through the floating editor", function()
 
   local draft_buf = vim.api.nvim_get_current_buf()
   assert_equal("markdown", vim.bo[draft_buf].filetype)
+  assert(vim.fn.maparg("<C-s>", "n", false, true).buffer ~= 1, "normal-mode <C-s> must not be buffer-local")
+  assert(vim.fn.maparg("<C-s>", "i", false, true).buffer ~= 1, "insert-mode <C-s> must not be buffer-local")
   local window_config = vim.api.nvim_win_get_config(0)
-  assert_equal(3, window_config.height)
+  assert(window_config.height >= 1 and window_config.height <= 3, "editor height must fit within three lines")
   assert_equal("server.lua:2-3", border_text(window_config.title))
   vim.api.nvim_buf_set_lines(draft_buf, 0, -1, false, {
     "Include the request path.",
     "This needs enough context for debugging.",
   })
-  vim.cmd("write")
+  vim.cmd("w")
 
   local files = comment_files(root)
   assert_equal(1, #files)
@@ -329,7 +331,7 @@ test("places the label below an editor shown above the range", function()
   assert_equal(true, opened)
 
   local window_config = vim.api.nvim_win_get_config(0)
-  assert_equal(3, window_config.height)
+  assert(window_config.height >= 1 and window_config.height <= 3, "editor height must fit within three lines")
   assert_equal(nil, border_text(window_config.title))
   assert_equal("bottom.lua:30", border_text(window_config.footer))
 

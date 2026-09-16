@@ -150,7 +150,7 @@ function M.open(opts)
     source_win = source_win,
     start_line = start_line,
     end_line = end_line,
-    max_height = 3,
+    max_height = 2,
     label = geometry.label(source_path, start_line, end_line),
   })
   local ok, win_or_err = pcall(vim.api.nvim_open_win, buf, true, window_config)
@@ -191,14 +191,6 @@ function M.open(opts)
         active = nil
       end
     end,
-  })
-
-  vim.keymap.set({ "n", "i" }, "<C-s>", function()
-    M.save(buf)
-  end, {
-    buffer = buf,
-    desc = "Save draft comment",
-    silent = true,
   })
 
   vim.cmd("startinsert")
