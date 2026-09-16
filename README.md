@@ -18,7 +18,22 @@ Then:
 4. Run `:write` or `:w` to save and close.
 5. The saved comment appears as virtual text after the source line and is written under `<git-root>/.review-comments/`.
 
-The editor starts at one line and grows with the comment body up to five lines. Use `:quit!` to cancel. The same workflow applies to the active pane of a native `:diffsplit`.
+For `jj diffedit`, the plugin gets the logical file path from `nvim.difftool` and resolves the Git root from Neovim's working directory. If Neovim changes its working directory, set the review root before startup completes:
+
+```toml
+[merge-tools.nvim]
+edit-args = [
+  "--cmd",
+  "let g:review_comments_root = trim(system('jj root'))",
+  "--cmd",
+  "packadd nvim.difftool",
+  "-d",
+  "$left",
+  "$right",
+]
+```
+
+`g:review_comments_root` must be an absolute path to the workspace root. It overrides automatic root detection.
 
 ## Saved comments
 

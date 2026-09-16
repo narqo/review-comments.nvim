@@ -1,5 +1,5 @@
 local geometry = require("review-comments.geometry")
-local git = require("review-comments.git")
+local source = require("review-comments.source")
 local storage = require("review-comments.storage")
 
 local M = {}
@@ -87,7 +87,9 @@ function M.save(buf)
     local ok, callback_err = pcall(draft.on_saved, {
       path = path,
       root = draft.root,
+      file = draft.metadata.file,
       source_buf = draft.source_buf,
+      source_path = draft.source_path,
     })
     if not ok then
       notify(string.format("Comment was saved but could not be displayed: %s", callback_err))
@@ -131,25 +133,19 @@ function M.open(opts)
     return false
   end
 
-  local source_path = vim.fs.normalize(source_name)
-  local root, root_err = git.root_for_file(source_path)
-  if not root then
-    notify(root_err)
+  local source_context, source_err = source.resolve(source_buf)
+  if not source_context then
+    notify(source_err)
     return false
   end
 
-  local relative_file, relative_err = git.relative_file(root, source_path)
-  if not relative_file then
-    notify(relative_err)
-    return false
-  end
-
+  local source_path = source_context.physical_file
   local context = table.concat(
     vim.api.nvim_buf_get_lines(source_buf, start_line - 1, end_line, false),
     "\n"
   )
   local metadata = {
-    file = relative_file,
+    file = source_context.file,
     range = {
       start_line = start_line,
       end_line = end_line,
@@ -190,7 +186,7 @@ function M.open(opts)
     source_path = source_path,
     start_line = start_line,
     end_line = end_line,
-    root = root,
+    root = source_context.root,
     output_dir = opts.output_dir,
     metadata = metadata,
     on_saved = opts.on_saved,

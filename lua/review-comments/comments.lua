@@ -1,4 +1,4 @@
-local git = require("review-comments.git")
+local source = require("review-comments.source")
 local storage = require("review-comments.storage")
 local viewer = require("review-comments.viewer")
 
@@ -83,10 +83,10 @@ local function scan(root, output_dir)
   return indexes[key]
 end
 
-local function render(buf, index, source_path)
+local function render(buf, index, file_key)
   vim.api.nvim_buf_clear_namespace(buf, namespace, 0, -1)
 
-  local comments = index.by_file[path_key(source_path)] or {}
+  local comments = index.by_file[file_key] or {}
   local line_count = vim.api.nvim_buf_line_count(buf)
   local by_end_line = {}
   for _, comment in ipairs(comments) do
@@ -122,28 +122,30 @@ local function attach(buf, output_dir, opts)
     return nil, "Buffer is not a named source buffer"
   end
 
-  local source_path = vim.fs.normalize(vim.api.nvim_buf_get_name(buf))
-  local root, root_err = git.root_for_file(source_path)
-  if not root then
+  local source_context, source_err = source.resolve(buf)
+  if not source_context then
     if opts.notify then
-      notify(root_err)
+      notify(source_err)
     end
-    return nil, root_err
+    return nil, source_err
   end
 
-  local key = index_key(root, output_dir)
+  local key = index_key(source_context.root, output_dir)
   local index = indexes[key]
   if opts.force or not index then
-    index = scan(root, output_dir)
+    index = scan(source_context.root, output_dir)
   end
 
+  local file_key = path_key(storage.resolve_file(source_context.root, source_context.file))
   attachments[buf] = {
     key = key,
-    root = root,
+    root = source_context.root,
     output_dir = output_dir,
-    source_path = source_path,
+    source_path = source_context.physical_file,
+    file = source_context.file,
+    file_key = file_key,
   }
-  render(buf, index, source_path)
+  render(buf, index, file_key)
   return index
 end
 
@@ -160,19 +162,20 @@ function M.comment_saved(event, output_dir)
   local index = scan(event.root, output_dir)
 
   if source_buffer(event.source_buf) then
-    local source_path = vim.fs.normalize(vim.api.nvim_buf_get_name(event.source_buf))
     attachments[event.source_buf] = {
       key = key,
       root = event.root,
       output_dir = output_dir,
-      source_path = source_path,
+      source_path = event.source_path,
+      file = event.file,
+      file_key = path_key(storage.resolve_file(event.root, event.file)),
     }
   end
 
   for buf, attachment in pairs(attachments) do
     if attachment.key == key then
       if source_buffer(buf) then
-        render(buf, index, attachment.source_path)
+        render(buf, index, attachment.file_key)
       else
         attachments[buf] = nil
       end
@@ -189,7 +192,7 @@ function M.view_buffer(buf, output_dir)
   local attachment = attachments[buf]
   local cursor_line = vim.api.nvim_win_get_cursor(0)[1]
   local matching = {}
-  for _, comment in ipairs(index.by_file[path_key(attachment.source_path)] or {}) do
+  for _, comment in ipairs(index.by_file[attachment.file_key] or {}) do
     local range = comment.metadata.range
     if range.start_line <= cursor_line and cursor_line <= range.end_line then
       table.insert(matching, comment)

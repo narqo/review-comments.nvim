@@ -2,13 +2,13 @@
 
 ## Goal
 
-Build a small Lua plugin for drafting review comments from normal source buffers and native Neovim `:diffsplit` windows. Each comment is written to a generated Markdown file for consumption by an external reviewer.
+Build a small Lua plugin for drafting review comments from normal source buffers, native Neovim `:diffsplit` windows, and `nvim.difftool` sessions. Each comment is written to a generated Markdown file for consumption by an external reviewer.
 
 The initial MVP only created files. It did not edit, delete, resolve, or publish existing comments.
 
 ## Current status
 
-The create and saved-comment visibility phases are implemented and covered by headless tests. The plugin supports source buffers and native `:diffsplit` windows, writes one file per comment, renders comment previews, refreshes external changes, and opens saved comments in a read-only viewer.
+The create and saved-comment visibility phases are implemented and covered by headless tests. The plugin supports source buffers, native `:diffsplit` windows, and Git-backed Jujutsu diff editors using `nvim.difftool`. It writes one file per comment, renders comment previews, refreshes external changes, and opens saved comments in a read-only viewer.
 
 ## User workflow
 
@@ -33,9 +33,10 @@ vim.keymap.set("x", "<leader>ac", ":<C-u>'<,'>AddComment<CR>")
 - Record one-based, inclusive start and end line numbers.
 - Store exactly the selected lines as the comment context.
 - Join context lines with newline characters without adding surrounding lines.
-- Use the active buffer when invoked from a `:diffsplit` window. No diff parsing or side tracking is required.
+- Use the active buffer when invoked from a `:diffsplit` window. No side tracking is required.
+- For `nvim.difftool` buffers, match the temporary buffer against quickfix `user_data.left` and `user_data.right`, then use `user_data.rel` as its logical source path.
 - Reject unnamed buffers.
-- Reject buffers whose files are outside a Git working tree.
+- Reject buffers when neither their physical path nor the diff-editor working directory belongs to a Git working tree.
 
 Files are assumed to remain static after comments are created. The MVP will not relocate stale line ranges.
 
@@ -60,7 +61,7 @@ Only one draft editor should be active at a time. Attempting to create another c
 
 ## Repository and output directory
 
-Determine the Git repository root from the selected buffer's absolute path. Use Git's reported top-level working-tree path so worktrees and nested repositories behave correctly.
+Use `g:review_comments_root` when it contains an absolute path to the workspace root. This explicit root overrides automatic detection. Otherwise, determine the Git repository root from the selected buffer's absolute path. For a temporary `nvim.difftool` buffer, resolve the Git root from Neovim's working directory instead. Use Git's reported top-level working-tree path so worktrees, nested repositories, and `jj diffedit` launched from a repository subdirectory behave correctly.
 
 Write files under:
 
@@ -132,6 +133,7 @@ require("review-comments").setup({
 - `output_dir` is interpreted relative to the Git repository root and must remain a relative path.
 - `keymap`, when set, installs a visual-mode mapping for `:AddComment`.
 - Calling `setup()` is optional; defaults should work after the plugin is loaded.
+- `g:review_comments_root`, when set before plugin resolution, must be an absolute path to the workspace root and overrides automatic root detection.
 
 Do not introduce external Lua dependencies.
 
@@ -140,7 +142,8 @@ Do not introduce external Lua dependencies.
 Report concise errors through `vim.notify` for:
 
 - unnamed source buffer;
-- source file outside a Git repository;
+- invalid `g:review_comments_root` value;
+- source file and diff-editor working directory outside a Git repository;
 - invalid or empty range;
 - empty comment;
 - output directory creation failure;
@@ -178,6 +181,8 @@ lua/
 
 - A line selection in a normal source buffer creates one Markdown file under the repository's `.review-comments/` directory.
 - A selection in either active pane of a native `:diffsplit` records that pane's path relative to the directory containing `.review-comments/`, plus its line range.
+- A selection in `jj diffedit --tool nvim` uses `g:review_comments_root` when configured; otherwise, it resolves the Git root from Neovim's working directory.
+- A diff-editor comment records the `nvim.difftool` logical path rather than the temporary snapshot path.
 - Output files use the UTC timestamp and random hexadecimal filename format.
 - The output directory remains flat regardless of the source file's location.
 - The raw JSON frontmatter parses as JSON.

@@ -427,6 +427,61 @@ test("uses the active diffsplit pane as the source", function()
   vim.fn.delete(root, "rf")
 end)
 
+test("uses g:review_comments_root for nvim.difftool buffers", function()
+  local old_cwd = vim.fn.getcwd()
+  local root = create_repository()
+  local invocation_dir = vim.fs.joinpath(root, "nested")
+  local snapshots = vim.fn.tempname()
+  local left = vim.fs.joinpath(snapshots, "left", "src", "file.lua")
+  local right = vim.fs.joinpath(snapshots, "right", "src", "file.lua")
+  assert_equal(1, vim.fn.mkdir(invocation_dir, "p"))
+  assert_equal(1, vim.fn.mkdir(vim.fs.dirname(left), "p"))
+  assert_equal(1, vim.fn.mkdir(vim.fs.dirname(right), "p"))
+  write_file(left, { "return 1" })
+  write_file(right, { "return 2" })
+
+  vim.cmd("cd " .. vim.fn.fnameescape(invocation_dir))
+  vim.fn.setqflist({}, "r", {
+    title = "DiffTool",
+    items = {
+      {
+        filename = right,
+        text = "M",
+        user_data = {
+          diff = true,
+          rel = "src/file.lua",
+          left = left,
+          right = right,
+        },
+      },
+    },
+  })
+
+  vim.cmd("cd " .. vim.fn.fnameescape(vim.fs.dirname(right)))
+  vim.g.review_comments_root = root
+  require("review-comments").setup({})
+  vim.cmd("edit " .. vim.fn.fnameescape(right))
+  local source_buf = vim.api.nvim_get_current_buf()
+  vim.cmd("1AddComment")
+  local draft_buf = vim.api.nvim_get_current_buf()
+  vim.api.nvim_buf_set_lines(draft_buf, 0, -1, false, { "Use the previous value." })
+  vim.cmd("w")
+
+  local files = comment_files(root)
+  assert_equal(1, #files)
+  local metadata = comment_parts(read_file(files[1]))
+  assert_equal("src/file.lua", metadata.file)
+  assert_equal(1, #preview_extmarks(source_buf))
+  assert_equal(0, vim.fn.isdirectory(vim.fs.joinpath(invocation_dir, ".review-comments")))
+  assert_equal(0, vim.fn.isdirectory(vim.fs.joinpath(snapshots, ".review-comments")))
+
+  vim.fn.setqflist({}, "f")
+  vim.g.review_comments_root = nil
+  vim.cmd("cd " .. vim.fn.fnameescape(old_cwd))
+  vim.fn.delete(root, "rf")
+  vim.fn.delete(snapshots, "rf")
+end)
+
 test("registers the ranged command and manages the configured mapping", function()
   local plugin = require("review-comments")
   plugin.setup({})
