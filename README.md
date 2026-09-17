@@ -84,3 +84,7 @@ The plugin requires Neovim 0.10 or newer, Git, and a named file inside a Git wor
 make test
 ```
 
+## License
+
+[MIT](LICENSE)
+
