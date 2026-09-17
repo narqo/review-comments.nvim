@@ -8,6 +8,8 @@ Comment a line (or a range of lines) in any file in the workspace:
 
 ![Add new comment](./doc/add-comment.png)
 
+_Colour scheme: [classylight](https://github.com/narqo/classylight.vim)_
+
 You can add a comment from the diff too:
 
 ![Add new comment inside diff](./doc/add-comment-diff.png)
