@@ -1,6 +1,8 @@
 # review-comments.nvim
 
-Draft review comments from source buffers.
+Draft code review comments from inside [Neovim](https://neovim.io/).
+
+![Add new comment](./doc/add-comment.png)
 
 ## Quick test
 
@@ -10,7 +12,7 @@ From this plugin directory, open a file from any Git repository:
 nvim --cmd "set runtimepath+=$PWD" /path/to/git-repo/source.go
 ```
 
-Then:
+## Usage
 
 1. Select lines with visual line mode, for example `Vjj`.
 2. Run `:AddComment` while the selection is active.
@@ -18,7 +20,7 @@ Then:
 4. Run `:write` or `:w` to save and close.
 5. The saved comment appears as virtual text after the source line and is written under `<git-root>/.review-comments/`.
 
-For `jj diffedit`, the plugin gets the logical file path from `nvim.difftool` and resolves the Git root from Neovim's working directory. If Neovim changes its working directory, set the review root before startup completes:
+For `jj diffedit`, the plugin needs the logical file path from `nvim.difftool` to resolve the Git root from Neovim's working directory:
 
 ```toml
 [merge-tools.nvim]
@@ -49,6 +51,16 @@ Reload comments created, changed, or removed externally with:
 
 ```vim
 :RefreshComment
+```
+
+## Addressing comments
+
+The agent skill at `.agents/skills/review-comment-inbox/SKILL.md` allows coding agents to inspect, address, test, and remove resolved comments.
+
+In [pi](https://pi.dev/), start it explicitly with:
+
+```text
+/skill:review-comment-inbox
 ```
 
 ## Configuration
