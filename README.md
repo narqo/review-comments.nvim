@@ -2,7 +2,18 @@
 
 Draft code review comments from inside [Neovim](https://neovim.io/).
 
+## Examples
+
+Comment a line (or a range of lines) in any file in the workspace:
+
 ![Add new comment](./doc/add-comment.png)
+
+You can add a comment from the diff too:
+
+![Add new comment inside diff](./doc/add-comment-diff.png)
+
+Each comment is stored in a separate Markdown file with JSON frontmatter in the `.review-comments` directory inside the workspace root.
+You can then point your coding agent to the stored comments, and ask it to address and to resolve each of them.
 
 ## Installation
 
@@ -21,7 +32,7 @@ vim.pack.add({ 'https://github.com/narqo/review-comments.nvim' })
 4. Run `:write` or `:w` to save and close.
 5. The saved comment appears as virtual text after the source line and is written under `<git-root>/.review-comments/`.
 
-To use with `jj diffedit`, the plugin needs the logical file path from `nvim.difftool` to resolve the Git root from Neovim's working directory:
+To use with [`jj diffedit`](https://jj-vcs.github.io/jj/latest/cli-reference/#jj-diffedit), the plugin needs the logical file path from `nvim.difftool` to resolve the Git root from Neovim's working directory:
 
 ```toml
 [merge-tools.nvim]
@@ -82,8 +93,6 @@ require("review-comments").setup({
 })
 ```
 
-Each comment is a separate Markdown file with JSON frontmatter.
-
 ## Testing
 
 ### Quick test
@@ -103,4 +112,3 @@ make test
 ## License
 
 [MIT](LICENSE)
-
