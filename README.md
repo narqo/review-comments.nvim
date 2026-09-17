@@ -4,12 +4,13 @@ Draft code review comments from inside [Neovim](https://neovim.io/).
 
 ![Add new comment](./doc/add-comment.png)
 
-## Quick test
+## Installation
 
-From this plugin directory, open a file from any Git repository:
+Using [vim.pack](https://neovim.io/doc/user/pack/#vim.pack) (on Neovim 0.12 and newer):
 
-```sh
-nvim --cmd "set runtimepath+=$PWD" /path/to/git-repo/source.go
+```
+-- Add this to init.lua
+vim.pack.add({ 'https://github.com/narqo/review-comments.nvim' })
 ```
 
 ## Usage
@@ -20,7 +21,7 @@ nvim --cmd "set runtimepath+=$PWD" /path/to/git-repo/source.go
 4. Run `:write` or `:w` to save and close.
 5. The saved comment appears as virtual text after the source line and is written under `<git-root>/.review-comments/`.
 
-For `jj diffedit`, the plugin needs the logical file path from `nvim.difftool` to resolve the Git root from Neovim's working directory:
+To use with `jj diffedit`, the plugin needs the logical file path from `nvim.difftool` to resolve the Git root from Neovim's working directory:
 
 ```toml
 [merge-tools.nvim]
@@ -36,6 +37,12 @@ edit-args = [
 ```
 
 `g:review_comments_root` must be an absolute path to the workspace root. It overrides automatic root detection.
+
+Run `jj diffedit` and add comments in a any normal buffer:
+
+```
+jj diffedit --tool=nvim
+```
 
 ## Saved comments
 
@@ -65,7 +72,8 @@ In [pi](https://pi.dev/), start it explicitly with:
 
 ## Configuration
 
-No mapping is installed by default. Add one through `setup()`:
+> [!CAUTION]
+> Exposed configuration options are experimental.
 
 ```lua
 require("review-comments").setup({
@@ -76,9 +84,17 @@ require("review-comments").setup({
 
 Each comment is a separate Markdown file with JSON frontmatter.
 
-The plugin requires Neovim 0.10 or newer, Git, and a named file inside a Git working tree.
+## Testing
 
-## Automated tests
+### Quick test
+
+From this plugin directory, open a file from any Git repository:
+
+```sh
+nvim --cmd "set runtimepath+=$PWD" /path/to/git-repo/source.go
+```
+
+## Automated testing
 
 ```sh
 make test
