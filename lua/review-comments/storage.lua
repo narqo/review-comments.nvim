@@ -184,9 +184,6 @@ function M.parse(content, path)
   if metadata.version ~= 1 then
     return nil, string.format("unsupported metadata version: %s", tostring(metadata.version))
   end
-  if metadata.status ~= "draft" then
-    return nil, string.format("unsupported comment status: %s", tostring(metadata.status))
-  end
   if type(metadata.file) ~= "string" or metadata.file == "" then
     return nil, "metadata file must be a non-empty path"
   end
@@ -260,7 +257,7 @@ function M.render(metadata, body)
   local lines = {
     "{",
     '  "version": 1,',
-    '  "status": "draft",',
+    '  "status": "draft",', -- TODO: do something with statuses?
     string.format('  "file": %s,', vim.json.encode(metadata.file)),
     '  "range": {',
     string.format('    "start_line": %d,', metadata.range.start_line),
