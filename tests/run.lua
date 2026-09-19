@@ -65,7 +65,7 @@ local function comment_parts(content)
 end
 
 local function comment_files(root)
-  local directory = vim.fs.joinpath(root, ".review-comments")
+  local directory = vim.fs.joinpath(root, ".reviews")
   local files = vim.fn.glob(vim.fs.joinpath(directory, "*.md"), false, true)
   table.sort(files)
   return files
@@ -174,11 +174,11 @@ test("creates unique flat comment files", function()
     context = "return true",
   }
 
-  local first, first_err = storage.write(root, ".review-comments", metadata, "First")
+  local first, first_err = storage.write(root, ".reviews", metadata, "First")
   if not first then
     fail(first_err)
   end
-  local second, second_err = storage.write(root, ".review-comments", metadata, "Second")
+  local second, second_err = storage.write(root, ".reviews", metadata, "Second")
   if not second then
     fail(second_err)
   end
@@ -186,7 +186,7 @@ test("creates unique flat comment files", function()
   assert(first ~= second, "comment filenames must be unique")
   assert_match(vim.fs.basename(first), "^%d%d%d%d%-%d%d%-%d%dT%d%d%d%d%d%d%.%d%d%dZ%-%x%x%x%x%x%x%.md$")
   assert_equal(vim.fs.dirname(first), vim.fs.dirname(second))
-  assert_equal(2, #vim.fn.glob(vim.fs.joinpath(root, ".review-comments", "*.md"), false, true))
+  assert_equal(2, #vim.fn.glob(vim.fs.joinpath(root, ".reviews", "*.md"), false, true))
 
   vim.fn.delete(root, "rf")
 end)
@@ -259,7 +259,7 @@ test("loads previews, refreshes external changes, and views overlapping comments
   local storage = require("review-comments.storage")
   local root = create_repository()
   local source = vim.fs.joinpath(root, "reviewed.lua")
-  local output_dir = vim.fs.joinpath(root, ".review-comments")
+  local output_dir = vim.fs.joinpath(root, ".reviews")
   write_file(source, { "local value = 1", "return value", "" })
   assert_equal(1, vim.fn.mkdir(output_dir, "p"))
 
@@ -380,7 +380,7 @@ end)
 test("keeps the editor open when the output path is not writable", function()
   local root = create_repository()
   local source = vim.fs.joinpath(root, "source.lua")
-  local output_path = vim.fs.joinpath(root, ".review-comments")
+  local output_path = vim.fs.joinpath(root, ".reviews")
   write_file(source, { "return true" })
   write_file(output_path, { "not a directory" })
 
@@ -472,8 +472,8 @@ test("uses g:review_comments_root for nvim.difftool buffers", function()
   local metadata = comment_parts(read_file(files[1]))
   assert_equal("src/file.lua", metadata.file)
   assert_equal(1, #preview_extmarks(source_buf))
-  assert_equal(0, vim.fn.isdirectory(vim.fs.joinpath(invocation_dir, ".review-comments")))
-  assert_equal(0, vim.fn.isdirectory(vim.fs.joinpath(snapshots, ".review-comments")))
+  assert_equal(0, vim.fn.isdirectory(vim.fs.joinpath(invocation_dir, ".reviews")))
+  assert_equal(0, vim.fn.isdirectory(vim.fs.joinpath(snapshots, ".reviews")))
 
   vim.fn.setqflist({}, "f")
   vim.g.review_comments_root = nil

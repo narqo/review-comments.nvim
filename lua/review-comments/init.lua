@@ -4,7 +4,7 @@ local editor = require("review-comments.editor")
 local M = {}
 
 local defaults = {
-  output_dir = ".review-comments",
+  output_dir = ".reviews",
   keymap = nil,
 }
 

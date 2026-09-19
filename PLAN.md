@@ -66,12 +66,12 @@ Use `g:review_comments_root` when it contains an absolute path to the workspace 
 Write files under:
 
 ```text
-<git-root>/.review-comments/
+<git-root>/.reviews/
 ```
 
 Create the directory when it does not exist. Keep all comment files directly inside it; do not mirror source directories.
 
-The plugin must not modify `.gitignore` or `.git/info/exclude`. Keeping `.review-comments/` untracked is the user's responsibility.
+The plugin must not modify `.gitignore` or `.git/info/exclude`. Keeping `.reviews/` untracked is the user's responsibility.
 
 ## Filename format
 
@@ -112,7 +112,7 @@ Metadata fields:
 
 - `version`: format version, initially `1`.
 - `status`: fixed to `draft`; the MVP does not manage status transitions.
-- `file`: normalized source path relative to the directory containing `.review-comments/`.
+- `file`: normalized source path relative to the directory containing `.reviews/`.
 - `range.start_line`: one-based inclusive first selected line.
 - `range.end_line`: one-based inclusive last selected line.
 - `context`: exact selected complete lines joined with `\n`.
@@ -125,7 +125,7 @@ Provide a minimal setup function:
 
 ```lua
 require("review-comments").setup({
-  output_dir = ".review-comments",
+  output_dir = ".reviews",
   keymap = nil,
 })
 ```
@@ -179,8 +179,8 @@ lua/
 
 ## Acceptance criteria
 
-- A line selection in a normal source buffer creates one Markdown file under the repository's `.review-comments/` directory.
-- A selection in either active pane of a native `:diffsplit` records that pane's path relative to the directory containing `.review-comments/`, plus its line range.
+- A line selection in a normal source buffer creates one Markdown file under the repository's `.reviews/` directory.
+- A selection in either active pane of a native `:diffsplit` records that pane's path relative to the directory containing `.reviews/`, plus its line range.
 - A selection in `jj diffedit --tool nvim` uses `g:review_comments_root` when configured; otherwise, it resolves the Git root from Neovim's working directory.
 - A diff-editor comment records the `nvim.difftool` logical path rather than the temporary snapshot path.
 - Output files use the UTC timestamp and random hexadecimal filename format.
@@ -199,9 +199,9 @@ lua/
 
 ### Parse and index comments
 
-- Scan `<git-root>/.review-comments/*.md`.
+- Scan `<git-root>/.reviews/*.md`.
 - Parse the raw JSON frontmatter and Markdown body.
-- Resolve metadata paths relative to the directory containing `.review-comments/` and group comments by normalized source path.
+- Resolve metadata paths relative to the directory containing `.reviews/` and group comments by normalized source path.
 - Ignore malformed or unsupported files and report concise warnings.
 - Load comments automatically once when entering a source buffer.
 - Add `:RefreshComment` to rescan files created, changed, or removed externally.
@@ -252,4 +252,4 @@ Explicitly defer the following:
 - GitHub or other review-service integration;
 - publishing comments;
 - modifying Git ignore configuration;
-- watching `.review-comments/` continuously for filesystem changes.
+- watching `.reviews/` continuously for filesystem changes.

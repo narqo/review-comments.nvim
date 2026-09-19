@@ -1,18 +1,18 @@
 ---
 name: review-comment-inbox
-description: Inspect, address, resolve, and clean up project review comments stored as Markdown files in .review-comments/. Use when the user asks to read, check, address, resolve, or clean up the review-comment inbox.
+description: Inspect, address, resolve, and clean up project review comments stored as Markdown files in .reviews/. Use when the user asks to read, check, address, resolve, or clean up the review-comment inbox.
 ---
 
 # Review Comment Inbox
 
-Process review comments in `.review-comments/` without conflating separate comments or deleting unresolved feedback.
+Process review comments in `.reviews/` without conflating separate comments or deleting unresolved feedback.
 
 ## Find comments
 
 List comment files in lexical order:
 
 ```sh
-find .review-comments -maxdepth 1 -type f -name '*.md' -print | sort
+find .reviews -maxdepth 1 -type f -name '*.md' -print | sort
 ```
 
 If the directory is absent or contains no matching files, report that the inbox is empty and stop.
@@ -23,7 +23,7 @@ Process comments one at a time. Read only the next file until its feedback is ad
 
 A comment file contains JSON frontmatter followed by the comment body. Older comments may use a fenced JSON block. Metadata normally includes:
 
-- `file`: source path relative to the directory containing `.review-comments/`;
+- `file`: source path relative to the directory containing the comment file;
 - `range.start_line` and `range.end_line`: one-based inclusive source range;
 - `context`: source text selected when the comment was created;
 
@@ -53,7 +53,7 @@ Removing the comment file marks it resolved.
 - If the user asks to review each change, pause after addressing one comment. Remove that file only after explicit confirmation, then continue with the next comment.
 - Do not remove malformed, ambiguous, blocked, or unsuccessfully tested comments.
 
-Delete only the exact comment file under `.review-comments/`, then verify the remaining inbox contents before proceeding.
+Delete only the exact comment file under `.reviews/`, then verify the remaining inbox contents before proceeding.
 
 ## Finish
 

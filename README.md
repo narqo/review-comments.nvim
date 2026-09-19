@@ -14,7 +14,7 @@ You can add a comment from the diff too:
 
 ![Add new comment inside diff](./doc/add-comment-diff.png)
 
-Each comment is stored in a separate Markdown file with JSON frontmatter in the `.review-comments` directory inside the workspace root.
+Each comment is stored in a separate Markdown file with JSON frontmatter in the `.reviews` directory inside the workspace root.
 You can then point your coding agent to the stored comments, and ask it to address and to resolve each of them.
 
 ## Installation
@@ -32,7 +32,7 @@ vim.pack.add({ 'https://github.com/narqo/review-comments.nvim' })
 2. Run `:AddComment` while the selection is active.
 3. Enter the comment in the floating editor.
 4. Run `:write` or `:w` to save and close.
-5. The saved comment appears as virtual text after the source line and is written under `<git-root>/.review-comments/`.
+5. The saved comment appears as virtual text after the source line and is written under `<git-root>/.reviews/`.
 
 To use with [`jj diffedit`](https://jj-vcs.github.io/jj/latest/cli-reference/#jj-diffedit), the plugin needs the logical file path from `nvim.difftool` to resolve the Git root from Neovim's working directory:
 
@@ -90,7 +90,7 @@ In [pi](https://pi.dev/), start it explicitly with:
 
 ```lua
 require("review-comments").setup({
-  output_dir = ".review-comments",
+  output_dir = ".reviews",
   keymap = "<leader>ac",
 })
 ```
